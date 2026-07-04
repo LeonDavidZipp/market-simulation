@@ -1,0 +1,10 @@
+[package]
+name = "market-sim-rs"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ordered-float = "5.3.0"
+
+[dev-dependencies]
+clippy = "0.0.302"
