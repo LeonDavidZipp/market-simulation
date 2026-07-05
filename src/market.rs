@@ -79,9 +79,8 @@ impl Market {
         let mut open = cfg.open;
         let price_factor_dist: Normal<f32> = Normal::new(0.0, cfg.open_std)?;
         let buyer_ratio_dist: Normal<f32> = Normal::new(0.5, cfg.buyer_ratio_std)?;
-        let mut rng: rand::prelude::ThreadRng = rng();
         for _ in 0..cfg.n_runs {
-            open = self.run_single(open, &mut rng, &buyer_ratio_dist, &price_factor_dist)?;
+            open = self.run_single(open, &price_factor_dist, &buyer_ratio_dist)?;
         }
         Ok(())
     }
@@ -89,18 +88,18 @@ impl Market {
     fn run_single(
         &mut self,
         open: f32,
-        rng: &mut rand::prelude::ThreadRng,
         price_factor_dist: &Normal<f32>,
         buyer_ratio_dist: &Normal<f32>,
     ) -> Result<f32, MarketError> {
         let cfg = self.config;
-        let buyer_ratio: f32 = buyer_ratio_dist.sample(rng).clamp(0.4, 0.6);
+        let mut rng: rand::prelude::ThreadRng = rng();
+        let buyer_ratio: f32 = buyer_ratio_dist.sample(&mut rng).clamp(0.4, 0.6);
         let n_buyers = (cfg.market_size as f32 * buyer_ratio).round() as usize;
         let n_sellers = cfg.market_size - n_buyers;
 
         let buy_orders: Vec<Order> = (0..n_buyers)
             .map(|_| {
-                let factor: f32 = price_factor_dist.sample(rng);
+                let factor: f32 = price_factor_dist.sample(&mut rng);
                 Order::new(
                     open + open * factor,
                     rng.random_range(cfg.min_quantity..=cfg.max_quantity),
@@ -109,7 +108,7 @@ impl Market {
             .collect();
         let sell_orders: Vec<Order> = (0..n_sellers)
             .map(|_| {
-                let factor: f32 = price_factor_dist.sample(rng);
+                let factor: f32 = price_factor_dist.sample(&mut rng);
                 Order::new(
                     open + open * factor,
                     rng.random_range(cfg.min_quantity..=cfg.max_quantity),
@@ -120,7 +119,7 @@ impl Market {
         self.order_book.insert_asks(sell_orders);
         let candle = self.order_book.resolve()?;
         self.history.push(candle);
-        Ok(candle.median)
+        Ok(candle.close)
     }
 
     pub fn history_to_df(&self) -> Result<DataFrame, PolarsError> {
