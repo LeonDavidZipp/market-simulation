@@ -35,8 +35,8 @@ pub struct Market {
 #[derive(Clone, Copy)]
 pub struct MarketConfig {
     pub market_size: usize,
-    pub start_prize: f32,
-    pub start_prize_std: f32,
+    pub open: f32,
+    pub open_std: f32,
     pub n_runs: usize,
     pub min_quantity: f32,
     pub max_quantity: f32,
@@ -46,8 +46,8 @@ pub struct MarketConfig {
 impl MarketConfig {
     pub fn new(
         market_size: usize,
-        start_prize: f32,
-        start_prize_std: f32,
+        open: f32,
+        open_std: f32,
         n_runs: usize,
         min_quantity: f32,
         max_quantity: f32,
@@ -55,8 +55,8 @@ impl MarketConfig {
     ) -> MarketConfig {
         MarketConfig {
             market_size,
-            start_prize,
-            start_prize_std,
+            open,
+            open_std,
             n_runs,
             min_quantity,
             max_quantity,
@@ -76,20 +76,19 @@ impl Market {
 
     pub fn run(&mut self) -> Result<(), MarketError> {
         let cfg = self.config;
-        let mut start_prize = cfg.start_prize;
-        let price_factor_dist: Normal<f32> = Normal::new(0.0, cfg.start_prize_std)?;
+        let mut open = cfg.open;
+        let price_factor_dist: Normal<f32> = Normal::new(0.0, cfg.open_std)?;
         let buyer_ratio_dist: Normal<f32> = Normal::new(0.5, cfg.buyer_ratio_std)?;
         let mut rng: rand::prelude::ThreadRng = rng();
         for _ in 0..cfg.n_runs {
-            start_prize =
-                self.run_single(start_prize, &mut rng, &buyer_ratio_dist, &price_factor_dist)?;
+            open = self.run_single(open, &mut rng, &buyer_ratio_dist, &price_factor_dist)?;
         }
         Ok(())
     }
 
     fn run_single(
         &mut self,
-        start_prize: f32,
+        open: f32,
         rng: &mut rand::prelude::ThreadRng,
         price_factor_dist: &Normal<f32>,
         buyer_ratio_dist: &Normal<f32>,
@@ -103,7 +102,7 @@ impl Market {
             .map(|_| {
                 let factor: f32 = price_factor_dist.sample(rng);
                 Order::new(
-                    start_prize + start_prize * factor,
+                    open + open * factor,
                     rng.random_range(cfg.min_quantity..=cfg.max_quantity),
                 )
             })
@@ -112,7 +111,7 @@ impl Market {
             .map(|_| {
                 let factor: f32 = price_factor_dist.sample(rng);
                 Order::new(
-                    start_prize + start_prize * factor,
+                    open + open * factor,
                     rng.random_range(cfg.min_quantity..=cfg.max_quantity),
                 )
             })
@@ -121,7 +120,7 @@ impl Market {
         self.order_book.insert_asks(sell_orders);
         let candle = self.order_book.resolve()?;
         self.history.push(candle);
-        Ok(candle.close)
+        Ok(candle.median)
     }
 
     pub fn history_to_df(&self) -> Result<DataFrame, PolarsError> {
