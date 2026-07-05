@@ -2,13 +2,6 @@ use crate::math::{calc_25th_percentile, calc_75th_percentile, calc_median};
 use ordered_float::OrderedFloat;
 use std::collections::{BTreeMap, HashMap, VecDeque};
 
-// Types of orders
-// Maker:
-//   - a buy priced below the current asked price
-//   - a sell priced above the current best bid
-// Taker:
-//   - a buy priced above or at the current asked price
-//   - a sell priced below or at the current best bid
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Order {
     pub price: f32,
@@ -70,8 +63,6 @@ impl CandleData {
             min, max, mean, median, perc_25, perc_75, open, close,
         ))
     }
-
-    // pub fn merge(&self, other: &CandleData) -> CandleData {}
 }
 
 #[derive(Debug)]
@@ -79,6 +70,7 @@ pub struct EmptyDataError;
 
 #[derive(Clone)]
 pub struct OrderBook {
+    pub last_traded_price: f32,
     pub bids: BTreeMap<OrderedFloat<f32>, VecDeque<Order>>,
     pub asks: BTreeMap<OrderedFloat<f32>, VecDeque<Order>>,
 }
@@ -86,6 +78,7 @@ pub struct OrderBook {
 impl Default for OrderBook {
     fn default() -> OrderBook {
         OrderBook {
+            last_traded_price: f32::INFINITY,
             bids: BTreeMap::new(),
             asks: BTreeMap::new(),
         }
@@ -93,16 +86,6 @@ impl Default for OrderBook {
 }
 
 impl OrderBook {
-    pub fn new(bids: Vec<Order>, asks: Vec<Order>) -> OrderBook {
-        let mut book = OrderBook {
-            bids: BTreeMap::new(),
-            asks: BTreeMap::new(),
-        };
-        book.insert_bids(bids);
-        book.insert_asks(asks);
-        book
-    }
-
     pub fn insert_bid(&mut self, order: Order) {
         self.bids
             .entry(OrderedFloat(order.price))
@@ -149,7 +132,7 @@ impl OrderBook {
         }
     }
 
-    pub fn resolve(&mut self) -> Result<CandleData, EmptyDataError> {
+    pub fn resolve(&mut self) -> Result<Vec<f32>, EmptyDataError> {
         let mut data: Vec<f32> = Vec::with_capacity(self.bids.len());
         loop {
             // get highest bid price
@@ -197,7 +180,7 @@ impl OrderBook {
             }
             data.push(ask_price.into_inner());
         }
-        CandleData::from_data(&data)
+        Ok(data)
     }
 }
 
