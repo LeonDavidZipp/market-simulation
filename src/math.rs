@@ -10,7 +10,6 @@ pub fn calc_75th_percentile(data: &[f32]) -> Option<f32> {
     calc_nth_percentile(data, 0.75)
 }
 
-
 pub fn calc_nth_percentile(data: &[f32], perc: f32) -> Option<f32> {
     if data.is_empty() {
         return None;
@@ -31,9 +30,7 @@ pub fn calc_nth_percentile(data: &[f32], perc: f32) -> Option<f32> {
         print!("{}, {}", lower_idx, upper_idx);
         return Some((sorted[lower_idx] + sorted[upper_idx]) / 2.0);
     }
-    
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -81,4 +78,3 @@ mod tests {
         assert_eq!(p, Some((0.2 + 1.2) / 2 as f32));
     }
 }
-
