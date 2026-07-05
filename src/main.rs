@@ -18,11 +18,11 @@ struct Cli {
     #[arg(long = "market-size", visible_alias = "ms", default_value_t = 100)]
     size: usize,
 
-    #[arg(long = "start-prize", visible_alias = "sp", default_value_t = 100.0)]
-    start_prize: f32,
+    #[arg(long = "open", visible_alias = "op", default_value_t = 100.0)]
+    open: f32,
 
-    #[arg(long = "start-prize-std", visible_alias = "sps", default_value_t = 0.01)]
-    start_prize_std: f32,
+    #[arg(long = "open-std", visible_alias = "os", default_value_t = 0.01)]
+    open_std: f32,
 
     #[arg(long = "min-quantity", visible_alias = "mnq", default_value_t = 1.0)]
     min_quantity: f32,
@@ -43,8 +43,8 @@ fn main() {
 
     let cfg = MarketConfig {
         market_size: cli.size,
-        start_prize: cli.start_prize,
-        start_prize_std: cli.start_prize_std,
+        open: cli.open,
+        open_std: cli.open_std,
         n_runs: cli.n_runs,
         min_quantity: cli.min_quantity,
         max_quantity: cli.max_quantity,
