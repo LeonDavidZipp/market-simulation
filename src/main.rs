@@ -24,6 +24,9 @@ struct Cli {
     #[arg(long = "open-std", visible_alias = "os", default_value_t = 0.01)]
     open_std: f32,
 
+    #[arg(long = "skew", visible_alias = "sk", default_value_t = 0.0)]
+    skew: f32,
+
     #[arg(long = "min-quantity", visible_alias = "mnq", default_value_t = 1.0)]
     min_quantity: f32,
 
@@ -45,6 +48,7 @@ fn main() {
         market_size: cli.size,
         open: cli.open,
         open_std: cli.open_std,
+        skew: cli.skew,
         n_runs: cli.n_runs,
         min_quantity: cli.min_quantity,
         max_quantity: cli.max_quantity,

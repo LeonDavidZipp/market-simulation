@@ -37,6 +37,7 @@ pub struct MarketConfig {
     pub market_size: usize,
     pub open: f32,
     pub open_std: f32,
+    pub skew: f32,
     pub n_runs: usize,
     pub min_quantity: f32,
     pub max_quantity: f32,
@@ -48,6 +49,7 @@ impl MarketConfig {
         market_size: usize,
         open: f32,
         open_std: f32,
+        skew: f32,
         n_runs: usize,
         min_quantity: f32,
         max_quantity: f32,
@@ -57,6 +59,7 @@ impl MarketConfig {
             market_size,
             open,
             open_std,
+            skew,
             n_runs,
             min_quantity,
             max_quantity,
@@ -77,7 +80,7 @@ impl Market {
     pub fn run(&mut self) -> Result<(), MarketError> {
         let cfg = self.config;
         let mut open = cfg.open;
-        let price_factor_dist: Normal<f32> = Normal::new(0.0, cfg.open_std)?;
+        let price_factor_dist: Normal<f32> = Normal::new(cfg.skew, cfg.open_std)?;
         let buyer_ratio_dist: Normal<f32> = Normal::new(0.5, cfg.buyer_ratio_std)?;
         for _ in 0..cfg.n_runs {
             open = self.run_single(open, &price_factor_dist, &buyer_ratio_dist)?;
