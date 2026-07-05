@@ -1,5 +1,7 @@
 use crate::order_book::EmptyDataError;
 use crate::order_book::{CandleData, Order, OrderBook};
+use polars::error::PolarsError;
+use polars::prelude::{DataFrame, df};
 use rand::RngExt;
 use rand::rng;
 use rand_distr::{Distribution, Normal, NormalError};
@@ -88,5 +90,26 @@ impl Market {
         let candle = self.order_book.resolve()?;
         self.history.push(candle);
         Ok(candle.last)
+    }
+
+    pub fn history_to_df(&self) -> Result<DataFrame, PolarsError> {
+        let min: Vec<f32> = self.history.iter().map(|c| c.min).collect();
+        let max: Vec<f32> = self.history.iter().map(|c| c.max).collect();
+        let mean: Vec<f32> = self.history.iter().map(|c| c.mean).collect();
+        let median: Vec<f32> = self.history.iter().map(|c| c.median).collect();
+        let perc_25: Vec<f32> = self.history.iter().map(|c| c.perc_25).collect();
+        let perc_75: Vec<f32> = self.history.iter().map(|c| c.perc_75).collect();
+        let last: Vec<f32> = self.history.iter().map(|c| c.last).collect();
+
+        let df = df!(
+            "min" => min,
+            "max" => max,
+            "mean" => mean,
+            "median" => median,
+            "perc_25" => perc_25,
+            "perc_75" => perc_75,
+            "last" => last,
+        )?;
+        Ok(df)
     }
 }
