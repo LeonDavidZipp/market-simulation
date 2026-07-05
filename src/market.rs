@@ -1,6 +1,6 @@
+use crate::math::{calc_25th_percentile, calc_75th_percentile, calc_median};
 use ordered_float::OrderedFloat;
 use std::collections::{BTreeMap, VecDeque};
-use crate::math::{calc_median, calc_25th_percentile, calc_75th_percentile};
 
 #[derive(Debug, PartialEq)]
 struct Order {
@@ -51,9 +51,7 @@ impl CandleData {
         let median = calc_median(data).ok_or(EmptyDataError)?;
         let perc_25 = calc_25th_percentile(data).ok_or(EmptyDataError)?;
         let perc_75 = calc_75th_percentile(data).ok_or(EmptyDataError)?;
-        Ok(CandleData::new(
-            min, max, mean, median, perc_25, perc_75
-        ))
+        Ok(CandleData::new(min, max, mean, median, perc_25, perc_75))
     }
 }
 
@@ -101,11 +99,8 @@ impl OrderBook {
             .push_back(order);
     }
 
-    pub fn resolve(&mut self) {
-        let max_price: f32 = 0.0;
-        let max_price: f32 = 0.0;
-        let max_price: f32 = 0.0;
-        let max_price: f32 = 0.0;
+    pub fn resolve(&mut self) -> Result<CandleData, EmptyDataError> {
+        let mut data: Vec<f32> = Vec::with_capacity(self.bids.len());
         loop {
             // get highest bid price
             let Some((&bid_price, _)) = self.bids.iter().next_back() else {
@@ -150,7 +145,9 @@ impl OrderBook {
             if ask_orders.is_empty() {
                 self.asks.remove(&ask_price);
             }
+            data.push(ask_price.into_inner());
         }
+        CandleData::from_data(&data)
     }
 }
 
@@ -186,52 +183,80 @@ mod tests {
     fn test_resolve_simple() {
         let (bids, asks) = simple_resolveable_orders();
         let mut book = OrderBook::new(bids, asks);
-        book.resolve();
+        let candle = book.resolve().unwrap();
         assert!(book.bids.is_empty());
         assert!(book.asks.is_empty());
+
+        assert_eq!(candle.min, 11.0);
+        assert_eq!(candle.max, 11.0);
+        assert_eq!(candle.mean, 11.0);
+        assert_eq!(candle.median, 11.0);
+        assert_eq!(candle.perc_25, 11.0);
+        assert_eq!(candle.perc_75, 11.0);
     }
 
     #[test]
     fn test_resolve_leftover_buy() {
         let (bids, asks) = leftover_buy();
         let mut book = OrderBook::new(bids, asks);
-        book.resolve();
+        let candle = book.resolve().unwrap();
 
         assert!(!book.bids.is_empty());
         let (top_price, mut top_level) = book.bids.pop_last().unwrap();
         assert_eq!(top_price, 11.0);
         assert_eq!(top_level.pop_front(), Some(Order::new(11.0, 12.0)));
         assert!(book.asks.is_empty());
+
+        assert_eq!(candle.min, 11.5);
+        assert_eq!(candle.max, 11.5);
+        assert_eq!(candle.mean, 11.5);
+        assert_eq!(candle.median, 11.5);
+        assert_eq!(candle.perc_25, 11.5);
+        assert_eq!(candle.perc_75, 11.5);
     }
 
     #[test]
     fn test_resolve_leftover_sell() {
         let (bids, asks) = leftover_sell();
         let mut book = OrderBook::new(bids, asks);
-        book.resolve();
+        let candle = book.resolve().unwrap();
 
         assert!(book.bids.is_empty());
         assert!(!book.asks.is_empty());
         let (top_price, mut top_level) = book.asks.pop_last().unwrap();
         assert_eq!(top_price, 12.0);
         assert_eq!(top_level.pop_front(), Some(Order::new(12.0, 12.0)));
+
+        assert_eq!(candle.min, 11.0);
+        assert_eq!(candle.max, 11.0);
+        assert_eq!(candle.mean, 11.0);
+        assert_eq!(candle.median, 11.0);
+        assert_eq!(candle.perc_25, 11.0);
+        assert_eq!(candle.perc_75, 11.0);
     }
 
     #[test]
     fn test_partially_resolve_full() {
         let (bids, asks) = partially_resolve_full();
         let mut book = OrderBook::new(bids, asks);
-        book.resolve();
+        let candle = book.resolve().unwrap();
 
         assert!(book.bids.is_empty());
         assert!(book.asks.is_empty());
+
+        assert_eq!(candle.min, 11.0);
+        assert_eq!(candle.max, 11.5);
+        assert_eq!(candle.mean, 11.25);
+        assert_eq!(candle.median, 11.25);
+        assert_eq!(candle.perc_25, 11.25);
+        assert_eq!(candle.perc_75, 11.25);
     }
 
     #[test]
     fn test_partially_resolve_leftover_buy() {
         let (bids, asks) = partially_resolve_leftover_buy();
         let mut book = OrderBook::new(bids, asks);
-        book.resolve();
+        let candle = book.resolve().unwrap();
 
         assert!(book.asks.is_empty());
         assert!(!book.bids.is_empty());
@@ -239,13 +264,20 @@ mod tests {
         assert_eq!(price, 11.5);
         assert_eq!(level.pop_front(), Some(Order::new(11.5, 1.0)));
         assert!(level.is_empty());
+
+        assert_eq!(candle.min, 11.0);
+        assert_eq!(candle.max, 11.5);
+        assert_eq!(candle.mean, 11.25);
+        assert_eq!(candle.median, 11.25);
+        assert_eq!(candle.perc_25, 11.25);
+        assert_eq!(candle.perc_75, 11.25);
     }
 
     #[test]
     fn test_partially_resolve_leftover_sell() {
         let (bids, asks) = partially_resolve_leftover_sell();
         let mut book = OrderBook::new(bids, asks);
-        book.resolve();
+        let candle = book.resolve().unwrap();
 
         assert!(book.bids.is_empty());
         assert!(!book.asks.is_empty());
@@ -253,6 +285,13 @@ mod tests {
         assert_eq!(price, 11.5);
         assert_eq!(level.pop_front(), Some(Order::new(11.5, 1.0)));
         assert!(level.is_empty());
+
+        assert_eq!(candle.min, 11.0);
+        assert_eq!(candle.max, 11.5);
+        assert_eq!(candle.mean, 11.25);
+        assert_eq!(candle.median, 11.25);
+        assert_eq!(candle.perc_25, 11.25);
+        assert_eq!(candle.perc_75, 11.25);
     }
 
     fn sample_orders() -> (Vec<Order>, Vec<Order>) {
