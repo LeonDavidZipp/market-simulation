@@ -22,6 +22,7 @@ pub struct CandleData {
     median: f32,
     perc_25: f32,
     perc_75: f32,
+    last: f32,
 }
 
 impl CandleData {
@@ -32,6 +33,7 @@ impl CandleData {
         median: f32,
         perc_25: f32,
         perc_75: f32,
+        last: f32,
     ) -> CandleData {
         CandleData {
             min,
@@ -40,6 +42,7 @@ impl CandleData {
             median,
             perc_25,
             perc_75,
+            last,
         }
     }
 
@@ -51,7 +54,10 @@ impl CandleData {
         let median = calc_median(data).ok_or(EmptyDataError)?;
         let perc_25 = calc_25th_percentile(data).ok_or(EmptyDataError)?;
         let perc_75 = calc_75th_percentile(data).ok_or(EmptyDataError)?;
-        Ok(CandleData::new(min, max, mean, median, perc_25, perc_75))
+        let last = *data.last().ok_or(EmptyDataError)?;
+        Ok(CandleData::new(
+            min, max, mean, median, perc_25, perc_75, last,
+        ))
     }
 }
 
@@ -187,6 +193,62 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_candle_data_from_data_empty() {
+        let result = CandleData::from_data(&[]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_candle_data_from_data_single_value() {
+        let candle = CandleData::from_data(&[11.0]).unwrap();
+        assert_eq!(candle.min, 11.0);
+        assert_eq!(candle.max, 11.0);
+        assert_eq!(candle.mean, 11.0);
+        assert_eq!(candle.median, 11.0);
+        assert_eq!(candle.perc_25, 11.0);
+        assert_eq!(candle.perc_75, 11.0);
+        assert_eq!(candle.last, 11.0);
+    }
+
+    #[test]
+    fn test_candle_data_from_data_multiple_values() {
+        let data: [f32; 5] = [0.1, 1.2, 0.2, 0.03, 0.04];
+        let candle = CandleData::from_data(&data).unwrap();
+
+        assert_eq!(candle.min, 0.03);
+        assert_eq!(candle.max, 1.2);
+        assert_eq!(candle.mean, 0.314);
+        assert_eq!(candle.median, 0.1);
+        assert_eq!(candle.perc_25, 0.04);
+        assert_eq!(candle.perc_75, 0.2);
+        assert_eq!(candle.last, 0.04);
+    }
+
+    #[test]
+    fn test_default_is_empty() {
+        let book = OrderBook::default();
+        assert!(book.bids.is_empty());
+        assert!(book.asks.is_empty());
+    }
+
+    #[test]
+    fn test_new_is_empty_when_given_no_orders() {
+        let book = OrderBook::new(vec![], vec![]);
+        assert!(book.bids.is_empty());
+        assert!(book.asks.is_empty());
+    }
+
+    #[test]
+    fn test_clone_is_independent() {
+        let book = OrderBook::new(vec![Order::new(11.0, 12.0)], vec![Order::new(12.0, 12.0)]);
+        let mut cloned = book.clone();
+        cloned.insert_bid(Order::new(13.0, 1.0));
+
+        assert_eq!(book.bids.len(), 1);
+        assert_eq!(cloned.bids.len(), 2);
+    }
+
+    #[test]
     fn test_insert_bid() {
         let mut book = OrderBook::default();
         book.insert_bid(Order::new(11.0, 12.0));
@@ -310,6 +372,7 @@ mod tests {
         assert_eq!(candle.median, 11.0);
         assert_eq!(candle.perc_25, 11.0);
         assert_eq!(candle.perc_75, 11.0);
+        assert_eq!(candle.last, 11.0);
     }
 
     #[test]
@@ -330,6 +393,7 @@ mod tests {
         assert_eq!(candle.median, 11.5);
         assert_eq!(candle.perc_25, 11.5);
         assert_eq!(candle.perc_75, 11.5);
+        assert_eq!(candle.last, 11.5);
     }
 
     #[test]
@@ -350,6 +414,7 @@ mod tests {
         assert_eq!(candle.median, 11.0);
         assert_eq!(candle.perc_25, 11.0);
         assert_eq!(candle.perc_75, 11.0);
+        assert_eq!(candle.last, 11.0);
     }
 
     #[test]
@@ -367,6 +432,7 @@ mod tests {
         assert_eq!(candle.median, 11.25);
         assert_eq!(candle.perc_25, 11.25);
         assert_eq!(candle.perc_75, 11.25);
+        assert_eq!(candle.last, 11.5);
     }
 
     #[test]
@@ -388,6 +454,7 @@ mod tests {
         assert_eq!(candle.median, 11.25);
         assert_eq!(candle.perc_25, 11.25);
         assert_eq!(candle.perc_75, 11.25);
+        assert_eq!(candle.last, 11.5);
     }
 
     #[test]
@@ -409,6 +476,7 @@ mod tests {
         assert_eq!(candle.median, 11.25);
         assert_eq!(candle.perc_25, 11.25);
         assert_eq!(candle.perc_75, 11.25);
+        assert_eq!(candle.last, 11.5);
     }
 
     fn sample_orders() -> (Vec<Order>, Vec<Order>) {
