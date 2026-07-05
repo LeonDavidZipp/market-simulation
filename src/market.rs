@@ -1,10 +1,11 @@
 use crate::order_book::EmptyDataError;
 use crate::order_book::{CandleData, Order, OrderBook};
 use polars::error::PolarsError;
-use polars::prelude::{DataFrame, df};
+use polars::prelude::{CsvWriter, DataFrame, ParquetWriter, SerWriter, df};
 use rand::RngExt;
 use rand::rng;
 use rand_distr::{Distribution, Normal, NormalError};
+use std::io::Write;
 
 #[derive(Debug)]
 pub enum MarketError {
@@ -113,5 +114,17 @@ impl Market {
             "close" => close,
         )?;
         Ok(df)
+    }
+
+    pub fn history_to_parquet<W: Write>(&self, writer: W) -> Result<(), PolarsError> {
+        let mut df = self.history_to_df()?;
+        ParquetWriter::new(writer).finish(&mut df)?;
+        Ok(())
+    }
+
+    pub fn history_to_csv<W: Write>(&self, writer: W) -> Result<(), PolarsError> {
+        let mut df = self.history_to_df()?;
+        CsvWriter::new(writer).finish(&mut df)?;
+        Ok(())
     }
 }

@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 ordered-float = "5.3.0"
-polars = "0.54.4"
+polars = { version = "0.54.4", features = ["csv", "parquet"] }
 rand = "0.10.2"
 rand_distr = "0.6.0"
 
