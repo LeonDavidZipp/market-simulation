@@ -21,7 +21,7 @@ struct Cli {
     #[arg(long = "start-prize", visible_alias = "sp", default_value_t = 100.0)]
     start_prize: f32,
 
-    #[arg(long = "start-prize-std", visible_alias = "sps", default_value_t = 5.0)]
+    #[arg(long = "start-prize-std", visible_alias = "sps", default_value_t = 0.01)]
     start_prize_std: f32,
 
     #[arg(long = "min-quantity", visible_alias = "mnq", default_value_t = 1.0)]
