@@ -79,7 +79,7 @@ impl OrderBook {
         book
     }
 
-    pub fn empty() -> OrderBook {
+    pub fn default() -> OrderBook {
         OrderBook {
             bids: BTreeMap::new(),
             asks: BTreeMap::new(),
