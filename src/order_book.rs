@@ -64,6 +64,15 @@ pub struct OrderBook {
     asks: BTreeMap<OrderedFloat<f32>, VecDeque<Order>>,
 }
 
+impl Default for OrderBook {
+    fn default() -> OrderBook {
+        OrderBook {
+            bids: BTreeMap::new(),
+            asks: BTreeMap::new(),
+        }
+    }
+}
+
 impl OrderBook {
     pub fn new(bids: Vec<Order>, asks: Vec<Order>) -> OrderBook {
         let mut book = OrderBook {
@@ -73,13 +82,6 @@ impl OrderBook {
         book.insert_bids(bids);
         book.insert_asks(asks);
         book
-    }
-
-    pub fn default() -> OrderBook {
-        OrderBook {
-            bids: BTreeMap::new(),
-            asks: BTreeMap::new(),
-        }
     }
 
     fn insert_bid(&mut self, order: Order) {
