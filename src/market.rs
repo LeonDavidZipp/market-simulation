@@ -35,7 +35,7 @@ pub struct Market {
 #[derive(Clone, Copy)]
 pub struct MarketConfig {
     pub market_size: usize,
-    pub open: f32,
+    pub initial_open: f32,
     pub open_std: f32,
     pub skew: f32,
     pub n_runs: usize,
@@ -47,7 +47,7 @@ pub struct MarketConfig {
 impl MarketConfig {
     pub fn new(
         market_size: usize,
-        open: f32,
+        initial_open: f32,
         open_std: f32,
         skew: f32,
         n_runs: usize,
@@ -57,7 +57,7 @@ impl MarketConfig {
     ) -> MarketConfig {
         MarketConfig {
             market_size,
-            open,
+            initial_open,
             open_std,
             skew,
             n_runs,
@@ -79,7 +79,7 @@ impl Market {
 
     pub fn run(&mut self) -> Result<(), MarketError> {
         let cfg = self.config;
-        let mut open = cfg.open;
+        let mut open = cfg.initial_open;
         let price_factor_dist: Normal<f32> = Normal::new(cfg.skew, cfg.open_std)?;
         let buyer_ratio_dist: Normal<f32> = Normal::new(0.5, cfg.buyer_ratio_std)?;
         for _ in 0..cfg.n_runs {

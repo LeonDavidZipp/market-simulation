@@ -1,6 +1,7 @@
 mod market;
 mod math;
 mod order_book;
+mod order_book_new;
 
 use clap::Parser;
 use market::{Market, MarketConfig};
@@ -46,7 +47,7 @@ fn main() {
 
     let cfg = MarketConfig {
         market_size: cli.size,
-        open: cli.open,
+        initial_open: cli.open,
         open_std: cli.open_std,
         skew: cli.skew,
         n_runs: cli.n_runs,
