@@ -36,31 +36,31 @@ pub struct Market {
 pub struct MarketConfig {
     pub market_size: usize,
     pub start_prize: f32,
-    pub start_prize_stddev: f32,
+    pub start_prize_std: f32,
     pub n_runs: usize,
     pub min_quantity: f32,
     pub max_quantity: f32,
-    pub buyer_ratio_stddev: f32,
+    pub buyer_ratio_std: f32,
 }
 
 impl MarketConfig {
     pub fn new(
         market_size: usize,
         start_prize: f32,
-        start_prize_stddev: f32,
+        start_prize_std: f32,
         n_runs: usize,
         min_quantity: f32,
         max_quantity: f32,
-        buyer_ratio_stddev: f32,
+        buyer_ratio_std: f32,
     ) -> MarketConfig {
         MarketConfig {
             market_size,
             start_prize,
-            start_prize_stddev,
+            start_prize_std,
             n_runs,
             min_quantity,
             max_quantity,
-            buyer_ratio_stddev,
+            buyer_ratio_std,
         }
     }
 }
@@ -77,8 +77,8 @@ impl Market {
     pub fn run(&mut self) -> Result<(), MarketError> {
         let cfg = self.config;
         let mut start_prize = cfg.start_prize;
-        let price_factor_dist: Normal<f32> = Normal::new(0.0, cfg.start_prize_stddev)?;
-        let buyer_ratio_dist: Normal<f32> = Normal::new(0.5, cfg.buyer_ratio_stddev)?;
+        let price_factor_dist: Normal<f32> = Normal::new(0.0, cfg.start_prize_std)?;
+        let buyer_ratio_dist: Normal<f32> = Normal::new(0.5, cfg.buyer_ratio_std)?;
         let mut rng: rand::prelude::ThreadRng = rng();
         for _ in 0..cfg.n_runs {
             start_prize =
