@@ -89,7 +89,7 @@ impl Market {
         self.order_book.insert_asks(sell_orders);
         let candle = self.order_book.resolve()?;
         self.history.push(candle);
-        Ok(candle.last)
+        Ok(candle.close)
     }
 
     pub fn history_to_df(&self) -> Result<DataFrame, PolarsError> {
@@ -99,7 +99,8 @@ impl Market {
         let median: Vec<f32> = self.history.iter().map(|c| c.median).collect();
         let perc_25: Vec<f32> = self.history.iter().map(|c| c.perc_25).collect();
         let perc_75: Vec<f32> = self.history.iter().map(|c| c.perc_75).collect();
-        let last: Vec<f32> = self.history.iter().map(|c| c.last).collect();
+        let open: Vec<f32> = self.history.iter().map(|c| c.open).collect();
+        let close: Vec<f32> = self.history.iter().map(|c| c.close).collect();
 
         let df = df!(
             "min" => min,
@@ -108,7 +109,8 @@ impl Market {
             "median" => median,
             "perc_25" => perc_25,
             "perc_75" => perc_75,
-            "last" => last,
+            "open" => open,
+            "close" => close,
         )?;
         Ok(df)
     }
