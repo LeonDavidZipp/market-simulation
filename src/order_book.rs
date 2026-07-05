@@ -22,7 +22,8 @@ pub struct CandleData {
     pub median: f32,
     pub perc_25: f32,
     pub perc_75: f32,
-    pub last: f32,
+    pub open: f32,
+    pub close: f32,
 }
 
 impl CandleData {
@@ -33,7 +34,8 @@ impl CandleData {
         median: f32,
         perc_25: f32,
         perc_75: f32,
-        last: f32,
+        open: f32,
+        close: f32,
     ) -> CandleData {
         CandleData {
             min,
@@ -42,7 +44,8 @@ impl CandleData {
             median,
             perc_25,
             perc_75,
-            last,
+            open,
+            close,
         }
     }
 
@@ -54,9 +57,10 @@ impl CandleData {
         let median = calc_median(data).ok_or(EmptyDataError)?;
         let perc_25 = calc_25th_percentile(data).ok_or(EmptyDataError)?;
         let perc_75 = calc_75th_percentile(data).ok_or(EmptyDataError)?;
-        let last = *data.last().ok_or(EmptyDataError)?;
+        let open = *data.first().ok_or(EmptyDataError)?;
+        let close = *data.last().ok_or(EmptyDataError)?;
         Ok(CandleData::new(
-            min, max, mean, median, perc_25, perc_75, last,
+            min, max, mean, median, perc_25, perc_75, open, close,
         ))
     }
 }
@@ -207,7 +211,8 @@ mod tests {
         assert_eq!(candle.median, 11.0);
         assert_eq!(candle.perc_25, 11.0);
         assert_eq!(candle.perc_75, 11.0);
-        assert_eq!(candle.last, 11.0);
+        assert_eq!(candle.open, 11.0);
+        assert_eq!(candle.close, 11.0);
     }
 
     #[test]
@@ -221,7 +226,8 @@ mod tests {
         assert_eq!(candle.median, 0.1);
         assert_eq!(candle.perc_25, 0.04);
         assert_eq!(candle.perc_75, 0.2);
-        assert_eq!(candle.last, 0.04);
+        assert_eq!(candle.open, 0.1);
+        assert_eq!(candle.close, 0.04);
     }
 
     #[test]
@@ -372,7 +378,8 @@ mod tests {
         assert_eq!(candle.median, 11.0);
         assert_eq!(candle.perc_25, 11.0);
         assert_eq!(candle.perc_75, 11.0);
-        assert_eq!(candle.last, 11.0);
+        assert_eq!(candle.open, 11.0);
+        assert_eq!(candle.close, 11.0);
     }
 
     #[test]
@@ -393,7 +400,8 @@ mod tests {
         assert_eq!(candle.median, 11.5);
         assert_eq!(candle.perc_25, 11.5);
         assert_eq!(candle.perc_75, 11.5);
-        assert_eq!(candle.last, 11.5);
+        assert_eq!(candle.open, 11.5);
+        assert_eq!(candle.close, 11.5);
     }
 
     #[test]
@@ -414,7 +422,8 @@ mod tests {
         assert_eq!(candle.median, 11.0);
         assert_eq!(candle.perc_25, 11.0);
         assert_eq!(candle.perc_75, 11.0);
-        assert_eq!(candle.last, 11.0);
+        assert_eq!(candle.open, 11.0);
+        assert_eq!(candle.close, 11.0);
     }
 
     #[test]
@@ -432,7 +441,8 @@ mod tests {
         assert_eq!(candle.median, 11.25);
         assert_eq!(candle.perc_25, 11.25);
         assert_eq!(candle.perc_75, 11.25);
-        assert_eq!(candle.last, 11.5);
+        assert_eq!(candle.open, 11.0);
+        assert_eq!(candle.close, 11.5);
     }
 
     #[test]
@@ -454,7 +464,8 @@ mod tests {
         assert_eq!(candle.median, 11.25);
         assert_eq!(candle.perc_25, 11.25);
         assert_eq!(candle.perc_75, 11.25);
-        assert_eq!(candle.last, 11.5);
+        assert_eq!(candle.open, 11.0);
+        assert_eq!(candle.close, 11.5);
     }
 
     #[test]
@@ -476,7 +487,8 @@ mod tests {
         assert_eq!(candle.median, 11.25);
         assert_eq!(candle.perc_25, 11.25);
         assert_eq!(candle.perc_75, 11.25);
-        assert_eq!(candle.last, 11.5);
+        assert_eq!(candle.open, 11.0);
+        assert_eq!(candle.close, 11.5);
     }
 
     fn sample_orders() -> (Vec<Order>, Vec<Order>) {
