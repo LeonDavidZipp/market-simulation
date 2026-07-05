@@ -26,18 +26,18 @@ impl From<NormalError> for MarketError {
 }
 
 #[derive(Clone)]
-struct Market {
+pub struct Market {
     size: usize,
     order_book: OrderBook,
     history: Vec<CandleData>,
 }
 
-struct RunConfig {
-    start_prize: f32,
-    n_runs: usize,
-    min_quantity: f32,
-    max_quantity: f32,
-    buyer_ratio_stddev: f32,
+pub struct RunConfig {
+    pub start_prize: f32,
+    pub n_runs: usize,
+    pub min_quantity: f32,
+    pub max_quantity: f32,
+    pub buyer_ratio_stddev: f32,
 }
 
 impl Market {
