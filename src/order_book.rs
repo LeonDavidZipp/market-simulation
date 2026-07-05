@@ -90,14 +90,14 @@ impl OrderBook {
         book
     }
 
-    fn insert_bid(&mut self, order: Order) {
+    pub fn insert_bid(&mut self, order: Order) {
         self.bids
             .entry(OrderedFloat(order.price))
             .or_insert_with(VecDeque::new)
             .push_back(order);
     }
 
-    fn insert_bids(&mut self, orders: Vec<Order>) {
+    pub fn insert_bids(&mut self, orders: Vec<Order>) {
         let mut grouped: HashMap<OrderedFloat<f32>, VecDeque<Order>> = HashMap::new();
         for order in orders {
             grouped
@@ -113,14 +113,14 @@ impl OrderBook {
         }
     }
 
-    fn insert_ask(&mut self, order: Order) {
+    pub fn insert_ask(&mut self, order: Order) {
         self.asks
             .entry(OrderedFloat(order.price))
             .or_insert_with(VecDeque::new)
             .push_back(order);
     }
 
-    fn insert_asks(&mut self, orders: Vec<Order>) {
+    pub fn insert_asks(&mut self, orders: Vec<Order>) {
         let mut grouped: HashMap<OrderedFloat<f32>, VecDeque<Order>> = HashMap::new();
         for order in orders {
             grouped
