@@ -2,8 +2,8 @@ use crate::math::{calc_25th_percentile, calc_75th_percentile, calc_median};
 use ordered_float::OrderedFloat;
 use std::collections::{BTreeMap, VecDeque};
 
-#[derive(Debug, PartialEq)]
-struct Order {
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub struct Order {
     price: f32,
     quantity: f32,
 }
@@ -15,7 +15,7 @@ impl Order {
 }
 
 #[derive(Clone, Copy)]
-struct CandleData {
+pub struct CandleData {
     min: f32,
     max: f32,
     mean: f32,
@@ -58,7 +58,8 @@ impl CandleData {
 #[derive(Debug)]
 pub struct EmptyDataError;
 
-struct OrderBook {
+#[derive(Clone)]
+pub struct OrderBook {
     bids: BTreeMap<OrderedFloat<f32>, VecDeque<Order>>,
     asks: BTreeMap<OrderedFloat<f32>, VecDeque<Order>>,
 }
