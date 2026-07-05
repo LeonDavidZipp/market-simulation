@@ -2,7 +2,25 @@ use crate::order_book::EmptyDataError;
 use crate::order_book::{CandleData, Order, OrderBook};
 use rand::RngExt;
 use rand::rng;
-use rand_distr::{Distribution, Normal};
+use rand_distr::{Distribution, Normal, NormalError};
+
+#[derive(Debug)]
+pub enum MarketError {
+    EmptyData(EmptyDataError),
+    InvalidDistribution(NormalError),
+}
+
+impl From<EmptyDataError> for MarketError {
+    fn from(e: EmptyDataError) -> Self {
+        MarketError::EmptyData(e)
+    }
+}
+
+impl From<NormalError> for MarketError {
+    fn from(e: NormalError) -> Self {
+        MarketError::InvalidDistribution(e)
+    }
+}
 
 #[derive(Clone)]
 struct Market {
@@ -28,9 +46,9 @@ impl Market {
         }
     }
 
-    pub fn run(&mut self, cfg: &RunConfig) -> Result<(), EmptyDataError> {
+    pub fn run(&mut self, cfg: &RunConfig) -> Result<(), MarketError> {
         let mut start_prize = cfg.start_prize;
-        let buyer_ratio_dist: Normal<f32> = Normal::new(0.5, cfg.buyer_ratio_stddev).unwrap();
+        let buyer_ratio_dist: Normal<f32> = Normal::new(0.5, cfg.buyer_ratio_stddev)?;
         let mut rng: rand::prelude::ThreadRng = rng();
         for _ in 0..cfg.n_runs {
             start_prize = self.run_single(cfg, start_prize, &mut rng, &buyer_ratio_dist)?;
@@ -44,7 +62,7 @@ impl Market {
         start_prize: f32,
         rng: &mut rand::prelude::ThreadRng,
         buyer_ratio_dist: &Normal<f32>,
-    ) -> Result<f32, EmptyDataError> {
+    ) -> Result<f32, MarketError> {
         let buyer_ratio: f32 = buyer_ratio_dist.sample(rng).clamp(0.4, 0.6);
         let n_buyers = (self.size as f32 * buyer_ratio).round() as usize;
         let n_sellers = self.size - n_buyers;
