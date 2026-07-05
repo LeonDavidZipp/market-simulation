@@ -77,10 +77,12 @@ impl Market {
     pub fn run(&mut self) -> Result<(), MarketError> {
         let cfg = self.config;
         let mut start_prize = cfg.start_prize;
+        let price_factor_dist: Normal<f32> = Normal::new(0.0, cfg.start_prize_stddev)?;
         let buyer_ratio_dist: Normal<f32> = Normal::new(0.5, cfg.buyer_ratio_stddev)?;
         let mut rng: rand::prelude::ThreadRng = rng();
         for _ in 0..cfg.n_runs {
-            start_prize = self.run_single(start_prize, &mut rng, &buyer_ratio_dist)?;
+            start_prize =
+                self.run_single(start_prize, &mut rng, &buyer_ratio_dist, &price_factor_dist)?;
         }
         Ok(())
     }
@@ -89,6 +91,7 @@ impl Market {
         &mut self,
         start_prize: f32,
         rng: &mut rand::prelude::ThreadRng,
+        price_factor_dist: &Normal<f32>,
         buyer_ratio_dist: &Normal<f32>,
     ) -> Result<f32, MarketError> {
         let cfg = self.config;
@@ -98,16 +101,18 @@ impl Market {
 
         let buy_orders: Vec<Order> = (0..n_buyers)
             .map(|_| {
+                let factor: f32 = price_factor_dist.sample(rng);
                 Order::new(
-                    start_prize,
+                    start_prize + start_prize * factor,
                     rng.random_range(cfg.min_quantity..=cfg.max_quantity),
                 )
             })
             .collect();
         let sell_orders: Vec<Order> = (0..n_sellers)
             .map(|_| {
+                let factor: f32 = price_factor_dist.sample(rng);
                 Order::new(
-                    start_prize,
+                    start_prize + start_prize * factor,
                     rng.random_range(cfg.min_quantity..=cfg.max_quantity),
                 )
             })
