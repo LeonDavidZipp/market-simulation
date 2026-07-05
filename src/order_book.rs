@@ -4,8 +4,8 @@ use std::collections::{BTreeMap, HashMap, VecDeque};
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Order {
-    price: f32,
-    quantity: f32,
+    pub price: f32,
+    pub quantity: f32,
 }
 
 impl Order {
@@ -16,13 +16,13 @@ impl Order {
 
 #[derive(Clone, Copy)]
 pub struct CandleData {
-    min: f32,
-    max: f32,
-    mean: f32,
-    median: f32,
-    perc_25: f32,
-    perc_75: f32,
-    last: f32,
+    pub min: f32,
+    pub max: f32,
+    pub mean: f32,
+    pub median: f32,
+    pub perc_25: f32,
+    pub perc_75: f32,
+    pub last: f32,
 }
 
 impl CandleData {
@@ -66,8 +66,8 @@ pub struct EmptyDataError;
 
 #[derive(Clone)]
 pub struct OrderBook {
-    bids: BTreeMap<OrderedFloat<f32>, VecDeque<Order>>,
-    asks: BTreeMap<OrderedFloat<f32>, VecDeque<Order>>,
+    pub bids: BTreeMap<OrderedFloat<f32>, VecDeque<Order>>,
+    pub asks: BTreeMap<OrderedFloat<f32>, VecDeque<Order>>,
 }
 
 impl Default for OrderBook {
