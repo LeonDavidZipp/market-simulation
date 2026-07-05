@@ -1,5 +1,6 @@
 use ordered_float::OrderedFloat;
 use std::collections::{BTreeMap, VecDeque};
+use crate::math::{calc_median, calc_25th_percentile, calc_75th_percentile};
 
 #[derive(Debug, PartialEq)]
 struct Order {
@@ -12,6 +13,52 @@ impl Order {
         Order { price, quantity }
     }
 }
+
+#[derive(Clone, Copy)]
+struct CandleData {
+    min: f32,
+    max: f32,
+    mean: f32,
+    median: f32,
+    perc_25: f32,
+    perc_75: f32,
+}
+
+impl CandleData {
+    pub fn new(
+        min: f32,
+        max: f32,
+        mean: f32,
+        median: f32,
+        perc_25: f32,
+        perc_75: f32,
+    ) -> CandleData {
+        CandleData {
+            min,
+            max,
+            mean,
+            median,
+            perc_25,
+            perc_75,
+        }
+    }
+
+    pub fn from_data(data: &[f32]) -> Result<CandleData, EmptyDataError> {
+        let max = data.iter().copied().fold(f32::MIN, f32::max);
+        let min = data.iter().copied().fold(f32::MAX, f32::min);
+        let sum: f32 = data.iter().copied().sum();
+        let mean = sum / data.len() as f32;
+        let median = calc_median(data).ok_or(EmptyDataError)?;
+        let perc_25 = calc_25th_percentile(data).ok_or(EmptyDataError)?;
+        let perc_75 = calc_75th_percentile(data).ok_or(EmptyDataError)?;
+        Ok(CandleData::new(
+            min, max, mean, median, perc_25, perc_75
+        ))
+    }
+}
+
+#[derive(Debug)]
+pub struct EmptyDataError;
 
 struct OrderBook {
     bids: BTreeMap<OrderedFloat<f32>, VecDeque<Order>>,
@@ -55,6 +102,10 @@ impl OrderBook {
     }
 
     pub fn resolve(&mut self) {
+        let max_price: f32 = 0.0;
+        let max_price: f32 = 0.0;
+        let max_price: f32 = 0.0;
+        let max_price: f32 = 0.0;
         loop {
             // get highest bid price
             let Some((&bid_price, _)) = self.bids.iter().next_back() else {
