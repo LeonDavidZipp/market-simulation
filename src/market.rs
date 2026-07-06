@@ -70,7 +70,6 @@ impl MarketConfig {
         n_ticks_per_candle: usize,
         min_quantity: f32,
         max_quantity: f32,
-        buyer_ratio_std: f32,
     ) -> MarketConfig {
         MarketConfig {
             n_traders,
@@ -116,7 +115,7 @@ impl Market {
                 } else {
                     book.insert_ask(Order::new(price, quantity));
                 }
-                let mut data = book.resolve()?;
+                let mut data = book.resolve();
                 trade_prices.append(&mut data);
                 if let Some(&last) = trade_prices.last() {
                     book.last_traded_price = last;

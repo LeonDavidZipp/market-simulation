@@ -50,6 +50,9 @@ impl CandleData {
     }
 
     pub fn from_data(data: &[f32]) -> Result<CandleData, EmptyDataError> {
+        if data.is_empty() {
+            return Err(EmptyDataError);
+        }
         let max = data.iter().copied().fold(f32::MIN, f32::max);
         let min = data.iter().copied().fold(f32::MAX, f32::min);
         let sum: f32 = data.iter().copied().sum();
@@ -100,7 +103,7 @@ impl OrderBook {
             .push_back(order);
     }
 
-    pub fn resolve(&mut self) -> Result<Vec<f32>, EmptyDataError> {
+    pub fn resolve(&mut self) -> Vec<f32> {
         let mut data: Vec<f32> = Vec::with_capacity(self.bids.len());
         loop {
             // get highest bid price
@@ -146,9 +149,9 @@ impl OrderBook {
             if ask_orders.is_empty() {
                 self.asks.remove(&ask_price);
             }
-            data.push(ask_price.into_inner());
+            data.push(bid_price.into_inner());
         }
-        Ok(data)
+        data
     }
 }
 
@@ -225,7 +228,7 @@ mod tests {
         let mut book = OrderBook::default();
         book.insert_bid(Order::new(11.0, 12.0));
         book.insert_ask(Order::new(11.0, 12.0));
-        let trades = book.resolve().unwrap();
+        let trades = book.resolve();
 
         assert!(book.bids.is_empty());
         assert!(book.asks.is_empty());
@@ -238,7 +241,7 @@ mod tests {
         book.insert_bid(Order::new(11.0, 12.0));
         book.insert_bid(Order::new(12.0, 12.0));
         book.insert_ask(Order::new(11.5, 12.0));
-        let trades = book.resolve().unwrap();
+        let trades = book.resolve();
 
         assert!(!book.bids.is_empty());
         let (top_price, mut top_level) = book.bids.pop_last().unwrap();
@@ -255,7 +258,7 @@ mod tests {
         book.insert_bid(Order::new(11.5, 12.0));
         book.insert_ask(Order::new(11.0, 12.0));
         book.insert_ask(Order::new(12.0, 12.0));
-        let trades = book.resolve().unwrap();
+        let trades = book.resolve();
 
         assert!(book.bids.is_empty());
         assert!(!book.asks.is_empty());
@@ -272,7 +275,7 @@ mod tests {
         book.insert_bid(Order::new(11.5, 25.0));
         book.insert_ask(Order::new(11.0, 12.0));
         book.insert_ask(Order::new(11.5, 13.0));
-        let trades = book.resolve().unwrap();
+        let trades = book.resolve();
 
         assert!(book.bids.is_empty());
         assert!(book.asks.is_empty());
@@ -285,7 +288,7 @@ mod tests {
         book.insert_bid(Order::new(11.5, 26.0));
         book.insert_ask(Order::new(11.0, 12.0));
         book.insert_ask(Order::new(11.5, 13.0));
-        let trades = book.resolve().unwrap();
+        let trades = book.resolve();
 
         assert!(book.asks.is_empty());
         assert!(!book.bids.is_empty());
@@ -303,7 +306,7 @@ mod tests {
         book.insert_bid(Order::new(11.5, 24.0));
         book.insert_ask(Order::new(11.0, 12.0));
         book.insert_ask(Order::new(11.5, 13.0));
-        let trades = book.resolve().unwrap();
+        let trades = book.resolve();
 
         assert!(book.bids.is_empty());
         assert!(!book.asks.is_empty());
