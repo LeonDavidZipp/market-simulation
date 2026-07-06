@@ -38,13 +38,6 @@ struct Cli {
 
     #[arg(long = "max-quantity", visible_alias = "mxq", default_value_t = 10.0)]
     max_quantity: f32,
-
-    #[arg(
-        long = "buyer-ratio-std",
-        visible_alias = "brs",
-        default_value_t = 0.05
-    )]
-    buyer_ratio_std: f32,
 }
 
 fn main() {
@@ -60,7 +53,6 @@ fn main() {
         n_ticks_per_candle: cli.n_ticks_per_candle,
         min_quantity: cli.min_quantity,
         max_quantity: cli.max_quantity,
-        buyer_ratio_std: cli.buyer_ratio_std,
     };
 
     let mut market = Market::with_config(cfg);

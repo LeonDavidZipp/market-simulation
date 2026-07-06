@@ -57,7 +57,6 @@ pub struct MarketConfig {
     pub n_ticks_per_candle: usize,
     pub min_quantity: f32,
     pub max_quantity: f32,
-    pub buyer_ratio_std: f32,
 }
 
 impl MarketConfig {
@@ -83,7 +82,6 @@ impl MarketConfig {
             n_ticks_per_candle,
             min_quantity,
             max_quantity,
-            buyer_ratio_std,
         }
     }
 }
