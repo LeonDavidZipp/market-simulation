@@ -1,6 +1,6 @@
 use crate::math::{calc_25th_percentile, calc_75th_percentile, calc_median};
 use ordered_float::OrderedFloat;
-use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::collections::{BTreeMap, VecDeque};
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Order {
@@ -93,43 +93,11 @@ impl OrderBook {
             .push_back(order);
     }
 
-    pub fn insert_bids(&mut self, orders: Vec<Order>) {
-        let mut grouped: HashMap<OrderedFloat<f32>, VecDeque<Order>> = HashMap::new();
-        for order in orders {
-            grouped
-                .entry(OrderedFloat(order.price))
-                .or_default()
-                .push_back(order);
-        }
-        for (price, mut queue) in grouped {
-            self.bids
-                .entry(price)
-                .or_insert_with(VecDeque::new)
-                .append(&mut queue);
-        }
-    }
-
     pub fn insert_ask(&mut self, order: Order) {
         self.asks
             .entry(OrderedFloat(order.price))
             .or_insert_with(VecDeque::new)
             .push_back(order);
-    }
-
-    pub fn insert_asks(&mut self, orders: Vec<Order>) {
-        let mut grouped: HashMap<OrderedFloat<f32>, VecDeque<Order>> = HashMap::new();
-        for order in orders {
-            grouped
-                .entry(OrderedFloat(order.price))
-                .or_default()
-                .push_back(order);
-        }
-        for (price, mut queue) in grouped {
-            self.asks
-                .entry(price)
-                .or_insert_with(VecDeque::new)
-                .append(&mut queue);
-        }
     }
 
     pub fn resolve(&mut self) -> Result<Vec<f32>, EmptyDataError> {
@@ -242,38 +210,6 @@ mod tests {
     }
 
     #[test]
-    fn test_insert_bids_groups_by_price_and_preserves_order() {
-        let mut book = OrderBook::default();
-        book.insert_bids(vec![
-            Order::new(11.0, 1.0),
-            Order::new(12.0, 2.0),
-            Order::new(11.0, 3.0),
-        ]);
-
-        assert_eq!(book.bids.len(), 2);
-        let level_11 = book.bids.get(&OrderedFloat(11.0)).unwrap();
-        assert_eq!(level_11.len(), 2);
-        assert_eq!(level_11.front(), Some(&Order::new(11.0, 1.0)));
-        assert_eq!(level_11.back(), Some(&Order::new(11.0, 3.0)));
-
-        let level_12 = book.bids.get(&OrderedFloat(12.0)).unwrap();
-        assert_eq!(level_12.len(), 1);
-        assert_eq!(level_12.front(), Some(&Order::new(12.0, 2.0)));
-    }
-
-    #[test]
-    fn test_insert_bids_appends_to_existing_level() {
-        let mut book = OrderBook::default();
-        book.insert_bid(Order::new(11.0, 1.0));
-        book.insert_bids(vec![Order::new(11.0, 2.0)]);
-
-        let level = book.bids.get(&OrderedFloat(11.0)).unwrap();
-        assert_eq!(level.len(), 2);
-        assert_eq!(level.front(), Some(&Order::new(11.0, 1.0)));
-        assert_eq!(level.back(), Some(&Order::new(11.0, 2.0)));
-    }
-
-    #[test]
     fn test_insert_ask() {
         let mut book = OrderBook::default();
         book.insert_ask(Order::new(11.0, 12.0));
@@ -282,38 +218,6 @@ mod tests {
         let level = book.asks.get(&OrderedFloat(11.0)).unwrap();
         assert_eq!(level.len(), 1);
         assert_eq!(level.front(), Some(&Order::new(11.0, 12.0)));
-    }
-
-    #[test]
-    fn test_insert_asks_groups_by_price_and_preserves_order() {
-        let mut book = OrderBook::default();
-        book.insert_asks(vec![
-            Order::new(11.0, 1.0),
-            Order::new(12.0, 2.0),
-            Order::new(11.0, 3.0),
-        ]);
-
-        assert_eq!(book.asks.len(), 2);
-        let level_11 = book.asks.get(&OrderedFloat(11.0)).unwrap();
-        assert_eq!(level_11.len(), 2);
-        assert_eq!(level_11.front(), Some(&Order::new(11.0, 1.0)));
-        assert_eq!(level_11.back(), Some(&Order::new(11.0, 3.0)));
-
-        let level_12 = book.asks.get(&OrderedFloat(12.0)).unwrap();
-        assert_eq!(level_12.len(), 1);
-        assert_eq!(level_12.front(), Some(&Order::new(12.0, 2.0)));
-    }
-
-    #[test]
-    fn test_insert_asks_appends_to_existing_level() {
-        let mut book = OrderBook::default();
-        book.insert_ask(Order::new(11.0, 1.0));
-        book.insert_asks(vec![Order::new(11.0, 2.0)]);
-
-        let level = book.asks.get(&OrderedFloat(11.0)).unwrap();
-        assert_eq!(level.len(), 2);
-        assert_eq!(level.front(), Some(&Order::new(11.0, 1.0)));
-        assert_eq!(level.back(), Some(&Order::new(11.0, 2.0)));
     }
 
     #[test]
