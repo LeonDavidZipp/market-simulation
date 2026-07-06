@@ -110,24 +110,37 @@ impl Market {
             for _ in 0..n_orders {
                 let price = book.last_traded_price * (1.0 + price_factor_dist.sample(&mut rng));
                 let quantity = quantity_dist.sample(&mut rng);
-                if price >= book.last_traded_price {
-                    book.insert_bid(Order::new(price, quantity));
+                let order = Order::new(price, quantity);
+                println!("generated: {}", order);
+                let inserted_is_bid = price >= book.last_traded_price;
+                if inserted_is_bid {
+                    book.insert_bid(order);
                 } else {
-                    book.insert_ask(Order::new(price, quantity));
+                    book.insert_ask(order);
                 }
-                let mut data = book.resolve();
+                let Some(mut data) = book.resolve(inserted_is_bid) else {
+                    println!("---");
+                    continue;
+                };
                 trade_prices.append(&mut data);
                 if let Some(&last) = trade_prices.last() {
                     book.last_traded_price = last;
                 }
             }
             if tick == cfg.n_ticks_per_candle {
+                let candle = CandleData::from_data(&trade_prices);
+                match candle {
+                    Ok(c) => {
+                        self.history.push(c);
+                    }
+                    Err(_) => {}
+                }
                 tick = 0;
-                self.history.push(CandleData::from_data(&trade_prices)?);
                 trade_prices.clear();
             } else {
-                tick += 1
+                tick += 1;
             };
+            println!("---");
         }
         Ok(())
     }

@@ -1,6 +1,7 @@
 use crate::math::{calc_25th_percentile, calc_75th_percentile, calc_median};
 use ordered_float::OrderedFloat;
 use std::collections::{BTreeMap, VecDeque};
+use std::fmt::{self, Display};
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Order {
@@ -11,6 +12,12 @@ pub struct Order {
 impl Order {
     pub fn new(price: f32, quantity: f32) -> Order {
         Order { price, quantity }
+    }
+}
+
+impl Display for Order {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} @ {}", self.quantity, self.price)
     }
 }
 
@@ -103,7 +110,7 @@ impl OrderBook {
             .push_back(order);
     }
 
-    pub fn resolve(&mut self) -> Option<Vec<f32>> {
+    pub fn resolve(&mut self, inserted_is_bid: bool) -> Option<Vec<f32>> {
         let bids = &mut self.bids;
         let asks = &mut self.asks;
         let mut trade_prices: Vec<f32> = Vec::with_capacity(2);
@@ -129,6 +136,7 @@ impl OrderBook {
             let Some(ask_order) = ask_orders.front_mut() else {
                 break;
             };
+            println!("matching {} with {}", bid_order, ask_order);
             let bid_quant = &mut bid_order.quantity;
             let ask_quant = &mut ask_order.quantity;
             let filled = (*bid_quant).min(*ask_quant);
@@ -136,19 +144,32 @@ impl OrderBook {
             *ask_quant -= filled;
             if *bid_quant <= 0.0 {
                 bid_orders.pop_back();
+                println!("removed that bid order");
                 if bid_orders.is_empty() {
                     bids.remove(&bid_price);
+                    println!("removed the bid price level");
                 }
+            } else {
+                println!("unfilled bid order quant {}", *bid_quant);
             }
             if *ask_quant <= 0.0 {
-                ask_orders.pop_back();
+                ask_orders.pop_front();
+                println!("removed that ask order");
                 if ask_orders.is_empty() {
                     asks.remove(&ask_price);
+                    println!("removed the ask price level");
                 }
+            } else {
+                println!("unfilled ask order quant {}", *ask_quant);
             }
-            trade_prices.push(ask_price.into_inner());
+            if inserted_is_bid {
+                trade_prices.push(ask_price.into_inner());
+            } else {
+                trade_prices.push(bid_price.into_inner());
+            }
         }
         if trade_prices.len() > 1 {
+            println!("trade_prices {:?}", trade_prices);
             Some(trade_prices)
         } else {
             None
@@ -229,7 +250,7 @@ mod tests {
         let mut book = OrderBook::default();
         book.insert_bid(Order::new(11.0, 12.0));
         book.insert_ask(Order::new(11.0, 12.0));
-        let trades = book.resolve();
+        let trades = book.resolve(false);
 
         assert!(book.bids.is_empty());
         assert!(book.asks.is_empty());
@@ -242,7 +263,7 @@ mod tests {
         book.insert_bid(Order::new(11.0, 12.0));
         book.insert_bid(Order::new(12.0, 12.0));
         book.insert_ask(Order::new(11.5, 12.0));
-        let trades = book.resolve();
+        let trades = book.resolve(false);
 
         assert!(!book.bids.is_empty());
         let (top_price, mut top_level) = book.bids.pop_last().unwrap();
@@ -259,7 +280,7 @@ mod tests {
         book.insert_bid(Order::new(11.5, 12.0));
         book.insert_ask(Order::new(11.0, 12.0));
         book.insert_ask(Order::new(12.0, 12.0));
-        let trades = book.resolve();
+        let trades = book.resolve(false);
 
         assert!(book.bids.is_empty());
         assert!(!book.asks.is_empty());
@@ -276,7 +297,7 @@ mod tests {
         book.insert_bid(Order::new(11.5, 25.0));
         book.insert_ask(Order::new(11.0, 12.0));
         book.insert_ask(Order::new(11.5, 13.0));
-        let trades = book.resolve();
+        let trades = book.resolve(false);
 
         assert!(book.bids.is_empty());
         assert!(book.asks.is_empty());
@@ -289,7 +310,7 @@ mod tests {
         book.insert_bid(Order::new(11.5, 26.0));
         book.insert_ask(Order::new(11.0, 12.0));
         book.insert_ask(Order::new(11.5, 13.0));
-        let trades = book.resolve();
+        let trades = book.resolve(false);
 
         assert!(book.asks.is_empty());
         assert!(!book.bids.is_empty());
@@ -307,7 +328,7 @@ mod tests {
         book.insert_bid(Order::new(11.5, 24.0));
         book.insert_ask(Order::new(11.0, 12.0));
         book.insert_ask(Order::new(11.5, 13.0));
-        let trades = book.resolve();
+        let trades = book.resolve(false);
 
         assert!(book.bids.is_empty());
         assert!(!book.asks.is_empty());
