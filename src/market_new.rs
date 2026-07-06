@@ -1,5 +1,5 @@
-use crate::order_book::EmptyDataError;
-use crate::order_book::{CandleData, Order, OrderBook};
+use crate::order_book_new::EmptyDataError;
+use crate::order_book_new::{CandleData, Order, OrderBook};
 use polars::error::PolarsError;
 use polars::prelude::{CsvWriter, DataFrame, ParquetWriter, SerWriter, df};
 use rand::RngExt;
@@ -55,7 +55,7 @@ pub struct MarketConfig {
     pub open_std: f32,
     pub skew: f32,
     pub n_runs: usize,
-    pub n_ticks_per_run: usize,
+    pub n_ticks_per_candle: usize,
     pub min_quantity: f32,
     pub max_quantity: f32,
     pub buyer_ratio_std: f32,
@@ -69,7 +69,7 @@ impl MarketConfig {
         open_std: f32,
         skew: f32,
         n_runs: usize,
-        n_ticks_per_run: usize,
+        n_ticks_per_candle: usize,
         min_quantity: f32,
         max_quantity: f32,
         buyer_ratio_std: f32,
@@ -81,7 +81,7 @@ impl MarketConfig {
             open_std,
             skew,
             n_runs,
-            n_ticks_per_run,
+            n_ticks_per_candle,
             min_quantity,
             max_quantity,
             buyer_ratio_std,
@@ -106,9 +106,9 @@ impl Market {
         let price_factor_dist: Normal<f32> = Normal::new(cfg.skew, cfg.open_std)?;
         let orders_dist = Binomial::new(cfg.n_traders as u64, cfg.trade_prob as f64)?;
         let quantity_dist = Uniform::new_inclusive(cfg.min_quantity, cfg.max_quantity)?;
-        let n_ticks_total = cfg.n_runs * cfg.n_ticks_per_run;
+        let n_ticks_total = cfg.n_runs * cfg.n_ticks_per_candle;
         let mut tick = 1;
-        let mut trade_prices: Vec<f32> = Vec::with_capacity(cfg.n_ticks_per_run);
+        let mut trade_prices: Vec<f32> = Vec::with_capacity(cfg.n_ticks_per_candle);
         for _ in 0..n_ticks_total {
             let n_orders: u64 = orders_dist.sample(&mut rng);
             for _ in 0..n_orders {
@@ -125,54 +125,15 @@ impl Market {
                     book.last_traded_price = last;
                 }
             }
-            tick = if tick == cfg.n_ticks_per_run {
-                0
-            } else {
-                tick + 1
-            };
-            if tick == 0 {
+            if tick == cfg.n_ticks_per_candle {
+                tick = 0;
                 self.history.push(CandleData::from_data(&trade_prices)?);
                 trade_prices.clear();
-            }
+            } else {
+                tick += 1
+            };
         }
         Ok(())
-    }
-
-    fn run_single(
-        &mut self,
-        open: f32,
-        price_factor_dist: &Normal<f32>,
-        buyer_ratio_dist: &Normal<f32>,
-    ) -> Result<f32, MarketError> {
-        let cfg = self.config;
-        let mut rng: rand::prelude::ThreadRng = rng();
-        let buyer_ratio: f32 = buyer_ratio_dist.sample(&mut rng).clamp(0.4, 0.6);
-        let n_buyers = (cfg.n_traders as f32 * buyer_ratio).round() as usize;
-        let n_sellers = cfg.n_traders - n_buyers;
-
-        let buy_orders: Vec<Order> = (0..n_buyers)
-            .map(|_| {
-                let factor: f32 = price_factor_dist.sample(&mut rng);
-                Order::new(
-                    open + open * factor,
-                    rng.random_range(cfg.min_quantity..=cfg.max_quantity),
-                )
-            })
-            .collect();
-        let sell_orders: Vec<Order> = (0..n_sellers)
-            .map(|_| {
-                let factor: f32 = price_factor_dist.sample(&mut rng);
-                Order::new(
-                    open + open * factor,
-                    rng.random_range(cfg.min_quantity..=cfg.max_quantity),
-                )
-            })
-            .collect();
-        self.order_book.insert_bids(buy_orders);
-        self.order_book.insert_asks(sell_orders);
-        let candle = self.order_book.resolve()?;
-        self.history.push(candle);
-        Ok(candle.close)
     }
 
     pub fn history_to_df(&self) -> Result<DataFrame, PolarsError> {
