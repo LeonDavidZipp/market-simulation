@@ -1,7 +1,6 @@
 mod market;
 mod math;
 mod order_book;
-mod order_book_new;
 
 use clap::Parser;
 use market::{Market, MarketConfig};
@@ -16,8 +15,14 @@ struct Cli {
     #[arg(short = 'o', long = "out")]
     out: PathBuf,
 
-    #[arg(long = "market-size", visible_alias = "ms", default_value_t = 100)]
-    size: usize,
+    #[arg(long = "n-traders", visible_alias = "nt", default_value_t = 1000)]
+    n_traders: usize,
+
+    #[arg(long = "trade-prob", visible_alias = "tp", default_value_t = 0.0005)]
+    trade_prob: f32,
+
+    #[arg(long = "ticks-per-candle", visible_alias = "tpc", default_value_t = 10)]
+    n_ticks_per_candle: usize,
 
     #[arg(long = "open", visible_alias = "op", default_value_t = 100.0)]
     open: f32,
@@ -46,11 +51,13 @@ fn main() {
     let cli = Cli::parse();
 
     let cfg = MarketConfig {
-        market_size: cli.size,
+        n_traders: cli.n_traders,
+        trade_prob: cli.trade_prob,
         initial_open: cli.open,
         open_std: cli.open_std,
         skew: cli.skew,
         n_runs: cli.n_runs,
+        n_ticks_per_candle: cli.n_ticks_per_candle,
         min_quantity: cli.min_quantity,
         max_quantity: cli.max_quantity,
         buyer_ratio_std: cli.buyer_ratio_std,
