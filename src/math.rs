@@ -19,14 +19,13 @@ pub fn calc_nth_percentile(data: &[f32], perc: f32) -> Option<f32> {
     }
     let mut sorted: Vec<f32> = data.to_vec();
     sorted.sort_by(f32::total_cmp);
-    let l = sorted.len();
-    let rank = perc * (l - 1) as f32;
+    let rank = perc * (sorted.len() - 1) as f32;
     let lower_idx = rank.floor() as usize;
     let upper_idx = rank.ceil() as usize;
     if lower_idx == upper_idx {
-        Some(sorted[lower_idx])
+        sorted.get(lower_idx).copied()
     } else {
-        Some((sorted[lower_idx] + sorted[upper_idx]) / 2.0)
+        Some((*sorted.get(lower_idx)? + *sorted.get(upper_idx)?) / 2.0)
     }
 }
 
