@@ -73,14 +73,25 @@ impl Market {
 
     pub fn history_to_df(&self) -> Result<DataFrame, PolarsError> {
         let hist = &self.history;
-        let min: Vec<f32> = hist.iter().map(|c| c.min).collect();
-        let max: Vec<f32> = hist.iter().map(|c| c.max).collect();
-        let mean: Vec<f32> = hist.iter().map(|c| c.mean).collect();
-        let median: Vec<f32> = hist.iter().map(|c| c.median).collect();
-        let perc_25: Vec<f32> = hist.iter().map(|c| c.perc_25).collect();
-        let perc_75: Vec<f32> = hist.iter().map(|c| c.perc_75).collect();
-        let open: Vec<f32> = hist.iter().map(|c| c.open).collect();
-        let close: Vec<f32> = hist.iter().map(|c| c.close).collect();
+        let l = hist.len();
+        let mut min = Vec::with_capacity(l);
+        let mut max = Vec::with_capacity(l);
+        let mut mean = Vec::with_capacity(l);
+        let mut median = Vec::with_capacity(l);
+        let mut perc_25 = Vec::with_capacity(l);
+        let mut perc_75 = Vec::with_capacity(l);
+        let mut open = Vec::with_capacity(l);
+        let mut close = Vec::with_capacity(l);
+        for c in hist.iter() {
+            min.push(c.min);
+            max.push(c.max);
+            mean.push(c.mean);
+            median.push(c.median);
+            perc_25.push(c.perc_25);
+            perc_75.push(c.perc_75);
+            open.push(c.open);
+            close.push(c.close);
+        }
 
         let df = df!(
             "min" => min,
