@@ -6,7 +6,7 @@ mod plot;
 use clap::Parser;
 use market::{Market, MarketConfig};
 use std::fs::File;
-use std::path::{PathBuf, Path};
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -108,11 +108,11 @@ async fn main() {
         std::process::exit(1);
     }
 
-    if let Some(handle) = chart_handle {
-        if let Err(e) = handle.await.expect("chart-saving task panicked") {
-            eprintln!("error saving chart: {e}");
-            std::process::exit(1);
-        }
+    if let Some(handle) = chart_handle
+        && let Err(e) = handle.await.expect("chart-saving task panicked")
+    {
+        eprintln!("error saving chart: {e}");
+        std::process::exit(1);
     }
 
     println!("output saving took {:.3?}", save_start.elapsed());
