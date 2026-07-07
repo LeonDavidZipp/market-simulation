@@ -3,76 +3,6 @@ use ordered_float::OrderedFloat;
 use std::collections::{BTreeMap, VecDeque};
 use std::fmt::{self, Display};
 
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub struct Order {
-    pub price: f32,
-    pub quantity: f32,
-}
-
-impl Order {
-    pub fn new(price: f32, quantity: f32) -> Order {
-        Order { price, quantity }
-    }
-}
-
-impl Display for Order {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} @ {}", self.quantity, self.price)
-    }
-}
-
-#[derive(Clone, Copy)]
-pub struct CandleData {
-    pub min: f32,
-    pub max: f32,
-    pub mean: f32,
-    pub median: f32,
-    pub perc_25: f32,
-    pub perc_75: f32,
-    pub open: f32,
-    pub close: f32,
-}
-
-impl CandleData {
-    pub fn from_data(data: &[f32]) -> Result<CandleData, EmptyDataError> {
-        if data.is_empty() {
-            return Err(EmptyDataError);
-        }
-        let mut d_copy = data.to_vec();
-        d_copy.sort_unstable_by(f32::total_cmp);
-        let max = data.iter().copied().fold(f32::MIN, f32::max);
-        let min = data.iter().copied().fold(f32::MAX, f32::min);
-        let sum: f32 = data.iter().copied().sum();
-        let mean = sum / data.len() as f32;
-        let median = calc_median(&d_copy).ok_or(EmptyDataError)?;
-        let perc_25 = calc_25th_percentile(&d_copy).ok_or(EmptyDataError)?;
-        let perc_75 = calc_75th_percentile(&d_copy).ok_or(EmptyDataError)?;
-        let open = *data.first().ok_or(EmptyDataError)?;
-        let close = *data.last().ok_or(EmptyDataError)?;
-        Ok(CandleData {
-            min,
-            max,
-            mean,
-            median,
-            perc_25,
-            perc_75,
-            open,
-            close,
-        })
-    }
-}
-
-#[derive(Debug)]
-pub struct EmptyDataError;
-
-impl Display for EmptyDataError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "data is empty")
-    }
-}
-
-impl std::error::Error for EmptyDataError {}
-
 #[derive(Clone)]
 pub struct OrderBook {
     pub last_traded_price: f32,
@@ -158,6 +88,76 @@ impl OrderBook {
         trade_prices
     }
 }
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub struct Order {
+    pub price: f32,
+    pub quantity: f32,
+}
+
+impl Order {
+    pub fn new(price: f32, quantity: f32) -> Order {
+        Order { price, quantity }
+    }
+}
+
+impl Display for Order {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} @ {}", self.quantity, self.price)
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct CandleData {
+    pub min: f32,
+    pub max: f32,
+    pub mean: f32,
+    pub median: f32,
+    pub perc_25: f32,
+    pub perc_75: f32,
+    pub open: f32,
+    pub close: f32,
+}
+
+impl CandleData {
+    pub fn from_data(data: &[f32]) -> Result<CandleData, EmptyDataError> {
+        if data.is_empty() {
+            return Err(EmptyDataError);
+        }
+        let mut d_copy = data.to_vec();
+        d_copy.sort_unstable_by(f32::total_cmp);
+        let max = data.iter().copied().fold(f32::MIN, f32::max);
+        let min = data.iter().copied().fold(f32::MAX, f32::min);
+        let sum: f32 = data.iter().copied().sum();
+        let mean = sum / data.len() as f32;
+        let median = calc_median(&d_copy).ok_or(EmptyDataError)?;
+        let perc_25 = calc_25th_percentile(&d_copy).ok_or(EmptyDataError)?;
+        let perc_75 = calc_75th_percentile(&d_copy).ok_or(EmptyDataError)?;
+        let open = *data.first().ok_or(EmptyDataError)?;
+        let close = *data.last().ok_or(EmptyDataError)?;
+        Ok(CandleData {
+            min,
+            max,
+            mean,
+            median,
+            perc_25,
+            perc_75,
+            open,
+            close,
+        })
+    }
+}
+
+#[derive(Debug)]
+pub struct EmptyDataError;
+
+impl Display for EmptyDataError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "data is empty")
+    }
+}
+
+impl std::error::Error for EmptyDataError {}
 
 #[cfg(test)]
 mod tests {
