@@ -111,7 +111,6 @@ impl Market {
                 let price = book.last_traded_price * (1.0 + price_factor_dist.sample(&mut rng));
                 let quantity = quantity_dist.sample(&mut rng);
                 let order = Order::new(price, quantity);
-                println!("generated: {}", order);
                 let inserted_is_bid = price >= book.last_traded_price;
                 if inserted_is_bid {
                     book.insert_bid(order);
@@ -119,7 +118,6 @@ impl Market {
                     book.insert_ask(order);
                 }
                 let Some(mut data) = book.resolve(inserted_is_bid) else {
-                    println!("---");
                     continue;
                 };
                 trade_prices.append(&mut data);
@@ -140,7 +138,6 @@ impl Market {
             } else {
                 tick += 1;
             };
-            println!("---");
         }
         Ok(())
     }

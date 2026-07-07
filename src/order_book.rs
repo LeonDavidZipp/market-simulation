@@ -136,7 +136,6 @@ impl OrderBook {
             let Some(ask_order) = ask_orders.front_mut() else {
                 break;
             };
-            println!("matching {} with {}", bid_order, ask_order);
             let bid_quant = &mut bid_order.quantity;
             let ask_quant = &mut ask_order.quantity;
             let filled = (*bid_quant).min(*ask_quant);
@@ -144,23 +143,17 @@ impl OrderBook {
             *ask_quant -= filled;
             if *bid_quant <= 0.0 {
                 bid_orders.pop_back();
-                println!("removed that bid order");
                 if bid_orders.is_empty() {
                     bids.remove(&bid_price);
-                    println!("removed the bid price level");
                 }
             } else {
-                println!("unfilled bid order quant {}", *bid_quant);
             }
             if *ask_quant <= 0.0 {
                 ask_orders.pop_front();
-                println!("removed that ask order");
                 if ask_orders.is_empty() {
                     asks.remove(&ask_price);
-                    println!("removed the ask price level");
                 }
             } else {
-                println!("unfilled ask order quant {}", *ask_quant);
             }
             if inserted_is_bid {
                 trade_prices.push(ask_price.into_inner());
@@ -169,7 +162,6 @@ impl OrderBook {
             }
         }
         if trade_prices.len() > 1 {
-            println!("trade_prices {:?}", trade_prices);
             Some(trade_prices)
         } else {
             None
