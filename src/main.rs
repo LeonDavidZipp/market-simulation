@@ -77,7 +77,7 @@ fn main() {
 
     let mut market = Market::with_config(cfg);
     if let Err(e) = market.run() {
-        eprintln!("simulation failed: {e:?}");
+        eprintln!("simulation failed: {e}");
         std::process::exit(1);
     }
 
