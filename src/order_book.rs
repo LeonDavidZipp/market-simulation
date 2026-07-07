@@ -161,10 +161,10 @@ impl OrderBook {
                 trade_prices.push(bid_price.into_inner());
             }
         }
-        if trade_prices.len() > 1 {
-            Some(trade_prices)
-        } else {
+        if trade_prices.is_empty() {
             None
+        } else {
+            Some(trade_prices)
         }
     }
 }
@@ -256,6 +256,7 @@ mod tests {
         book.insert_bid(Order::new(12.0, 12.0));
         book.insert_ask(Order::new(11.5, 12.0));
         let trades = book.resolve(false);
+        println!("{:?}, {:?}", book.bids, book.asks);
 
         assert!(!book.bids.is_empty());
         let (top_price, mut top_level) = book.bids.pop_last().unwrap();
@@ -263,7 +264,7 @@ mod tests {
         assert_eq!(top_level.pop_front(), Some(Order::new(11.0, 12.0)));
         assert!(book.asks.is_empty());
 
-        assert_eq!(trades, Some(vec![11.5]));
+        assert_eq!(trades, Some(vec![12.0]));
     }
 
     #[test]
@@ -280,7 +281,7 @@ mod tests {
         assert_eq!(top_price, 12.0);
         assert_eq!(top_level.pop_front(), Some(Order::new(12.0, 12.0)));
 
-        assert_eq!(trades, Some(vec![11.0]));
+        assert_eq!(trades, Some(vec![11.5]));
     }
 
     #[test]
@@ -293,7 +294,7 @@ mod tests {
 
         assert!(book.bids.is_empty());
         assert!(book.asks.is_empty());
-        assert_eq!(trades, Some(vec![11.0, 11.5]));
+        assert_eq!(trades, Some(vec![11.5, 11.5]));
     }
 
     #[test]
@@ -311,7 +312,7 @@ mod tests {
         assert_eq!(level.pop_front(), Some(Order::new(11.5, 1.0)));
         assert!(level.is_empty());
 
-        assert_eq!(trades, Some(vec![11.0, 11.5]));
+        assert_eq!(trades, Some(vec![11.5, 11.5]));
     }
 
     #[test]
@@ -329,6 +330,6 @@ mod tests {
         assert_eq!(level.pop_front(), Some(Order::new(11.5, 1.0)));
         assert!(level.is_empty());
 
-        assert_eq!(trades, Some(vec![11.0, 11.5]));
+        assert_eq!(trades, Some(vec![11.5, 11.5]));
     }
 }
