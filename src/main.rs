@@ -1,11 +1,14 @@
 mod market;
 mod math;
 mod order_book;
+mod plot;
 
 use clap::Parser;
 use market::{Market, MarketConfig};
 use std::fs::File;
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
+use std::sync::Arc;
+use std::time::Instant;
 
 #[derive(Parser)]
 struct Cli {
@@ -14,6 +17,9 @@ struct Cli {
 
     #[arg(short = 'o', long = "out")]
     out: PathBuf,
+
+    #[arg(long = "chart-out", visible_alias = "co")]
+    chart_out: Option<PathBuf>,
 
     #[arg(long = "n-traders", visible_alias = "nt", default_value_t = 1000)]
     n_traders: usize,
@@ -56,7 +62,8 @@ struct Cli {
     spike_ratio: f32,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let cli = Cli::parse();
 
     let cfg = MarketConfig {
@@ -76,15 +83,39 @@ fn main() {
     };
 
     let mut market = Market::with_config(cfg);
+
+    let sim_start = Instant::now();
     if let Err(e) = market.run() {
         eprintln!("simulation failed: {e}");
         std::process::exit(1);
     }
+    println!("simulation took {:.3?}", sim_start.elapsed());
 
-    if let Err(e) = write_output(&market, &cli.out) {
-        eprintln!("error: {e}");
+    let market = Arc::new(market);
+    let save_start = Instant::now();
+
+    let write_market = Arc::clone(&market);
+    let out_path = cli.out.clone();
+    let write_handle = tokio::task::spawn_blocking(move || write_output(&write_market, &out_path));
+
+    let chart_handle = cli.chart_out.clone().map(|chart_path| {
+        let chart_market = Arc::clone(&market);
+        tokio::task::spawn_blocking(move || write_chart(&chart_market, &chart_path))
+    });
+
+    if let Err(e) = write_handle.await.expect("data-saving task panicked") {
+        eprintln!("error saving data: {e}");
         std::process::exit(1);
     }
+
+    if let Some(handle) = chart_handle {
+        if let Err(e) = handle.await.expect("chart-saving task panicked") {
+            eprintln!("error saving chart: {e}");
+            std::process::exit(1);
+        }
+    }
+
+    println!("output saving took {:.3?}", save_start.elapsed());
 }
 
 fn write_output(market: &Market, out: &PathBuf) -> Result<(), String> {
@@ -99,4 +130,12 @@ fn write_output(market: &Market, out: &PathBuf) -> Result<(), String> {
         Some(other) => Err(format!("unsupported output file extension: .{other}")),
         None => Err("output file has no extension; cannot infer format".to_string()),
     }
+}
+
+fn write_chart(market: &Market, out: &Path) -> Result<(), String> {
+    let df = market.history_to_df().map_err(|e| e.to_string())?;
+    let path = out
+        .to_str()
+        .ok_or_else(|| "chart output path is not valid UTF-8".to_string())?;
+    plot::plot_candles(&df, path).map_err(|e| e.to_string())
 }
