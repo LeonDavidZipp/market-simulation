@@ -91,16 +91,13 @@ impl Default for OrderBook {
 }
 
 impl OrderBook {
-    pub fn insert_bid(&mut self, order: Order) {
-        self.bids
-            .entry(OrderedFloat(order.price))
-            .or_default()
-            .push_back(order);
-    }
-
-    pub fn insert_ask(&mut self, order: Order) {
-        self.asks
-            .entry(OrderedFloat(order.price))
+    pub fn insert_order(&mut self, order: Order, is_bid: bool) {
+        let side = if is_bid {
+            &mut self.bids
+        } else {
+            &mut self.asks
+        };
+        side.entry(OrderedFloat(order.price))
             .or_default()
             .push_back(order);
     }
@@ -108,7 +105,7 @@ impl OrderBook {
     pub fn resolve(&mut self, inserted_is_bid: bool) -> Option<Vec<f32>> {
         let bids = &mut self.bids;
         let asks = &mut self.asks;
-        let mut trade_prices: Vec<f32> = Vec::with_capacity(2);
+        let mut trade_prices: Option<Vec<f32>> = None;
         loop {
             let Some((&bid_price, _)) = bids.iter().next_back() else {
                 break;
@@ -149,16 +146,16 @@ impl OrderBook {
                 }
             }
             if inserted_is_bid {
-                trade_prices.push(ask_price.into_inner());
+                trade_prices
+                    .get_or_insert_with(Vec::new)
+                    .push(ask_price.into_inner());
             } else {
-                trade_prices.push(bid_price.into_inner());
+                trade_prices
+                    .get_or_insert_with(Vec::new)
+                    .push(bid_price.into_inner());
             }
         }
-        if trade_prices.is_empty() {
-            None
-        } else {
-            Some(trade_prices)
-        }
+        trade_prices
     }
 }
 
@@ -211,7 +208,7 @@ mod tests {
     #[test]
     fn test_insert_bid() {
         let mut book = OrderBook::default();
-        book.insert_bid(Order::new(11.0, 12.0));
+        book.insert_order(Order::new(11.0, 12.0), true);
 
         assert_eq!(book.bids.len(), 1);
         let level = book.bids.get(&OrderedFloat(11.0)).unwrap();
@@ -222,7 +219,7 @@ mod tests {
     #[test]
     fn test_insert_ask() {
         let mut book = OrderBook::default();
-        book.insert_ask(Order::new(11.0, 12.0));
+        book.insert_order(Order::new(11.0, 12.0), false);
 
         assert_eq!(book.asks.len(), 1);
         let level = book.asks.get(&OrderedFloat(11.0)).unwrap();
@@ -233,8 +230,8 @@ mod tests {
     #[test]
     fn test_resolve_simple() {
         let mut book = OrderBook::default();
-        book.insert_bid(Order::new(11.0, 12.0));
-        book.insert_ask(Order::new(11.0, 12.0));
+        book.insert_order(Order::new(11.0, 12.0), true);
+        book.insert_order(Order::new(11.0, 12.0), false);
         let trades = book.resolve(false);
 
         assert!(book.bids.is_empty());
@@ -245,9 +242,9 @@ mod tests {
     #[test]
     fn test_resolve_leftover_buy() {
         let mut book = OrderBook::default();
-        book.insert_bid(Order::new(11.0, 12.0));
-        book.insert_bid(Order::new(12.0, 12.0));
-        book.insert_ask(Order::new(11.5, 12.0));
+        book.insert_order(Order::new(11.0, 12.0), true);
+        book.insert_order(Order::new(12.0, 12.0), true);
+        book.insert_order(Order::new(11.5, 12.0), false);
         let trades = book.resolve(false);
         println!("{:?}, {:?}", book.bids, book.asks);
 
@@ -263,9 +260,9 @@ mod tests {
     #[test]
     fn test_resolve_leftover_sell() {
         let mut book = OrderBook::default();
-        book.insert_bid(Order::new(11.5, 12.0));
-        book.insert_ask(Order::new(11.0, 12.0));
-        book.insert_ask(Order::new(12.0, 12.0));
+        book.insert_order(Order::new(11.5, 12.0), true);
+        book.insert_order(Order::new(11.0, 12.0), false);
+        book.insert_order(Order::new(12.0, 12.0), false);
         let trades = book.resolve(false);
 
         assert!(book.bids.is_empty());
@@ -280,9 +277,9 @@ mod tests {
     #[test]
     fn test_partially_resolve_full() {
         let mut book = OrderBook::default();
-        book.insert_bid(Order::new(11.5, 25.0));
-        book.insert_ask(Order::new(11.0, 12.0));
-        book.insert_ask(Order::new(11.5, 13.0));
+        book.insert_order(Order::new(11.5, 25.0), true);
+        book.insert_order(Order::new(11.0, 12.0), false);
+        book.insert_order(Order::new(11.5, 13.0), false);
         let trades = book.resolve(false);
 
         assert!(book.bids.is_empty());
@@ -293,9 +290,9 @@ mod tests {
     #[test]
     fn test_partially_resolve_leftover_buy() {
         let mut book = OrderBook::default();
-        book.insert_bid(Order::new(11.5, 26.0));
-        book.insert_ask(Order::new(11.0, 12.0));
-        book.insert_ask(Order::new(11.5, 13.0));
+        book.insert_order(Order::new(11.5, 26.0), true);
+        book.insert_order(Order::new(11.0, 12.0), false);
+        book.insert_order(Order::new(11.5, 13.0), false);
         let trades = book.resolve(false);
 
         assert!(book.asks.is_empty());
@@ -311,9 +308,9 @@ mod tests {
     #[test]
     fn test_partially_resolve_leftover_sell() {
         let mut book = OrderBook::default();
-        book.insert_bid(Order::new(11.5, 24.0));
-        book.insert_ask(Order::new(11.0, 12.0));
-        book.insert_ask(Order::new(11.5, 13.0));
+        book.insert_order(Order::new(11.5, 24.0), true);
+        book.insert_order(Order::new(11.0, 12.0), false);
+        book.insert_order(Order::new(11.5, 13.0), false);
         let trades = book.resolve(false);
 
         assert!(book.bids.is_empty());
