@@ -17,7 +17,7 @@ pub fn plot_candles(df: &DataFrame, out_path: &str) -> Result<(), Box<dyn std::e
     }
 
     let (width, height) = (1600u32, 800u32);
-    let root = BitMapBackend::new(out_path, (width, height)).into_drawing_area();
+    let root = SVGBackend::new(out_path, (width, height)).into_drawing_area();
     root.fill(&WHITE)?;
 
     let min_price = min.iter().copied().fold(f32::MAX, f32::min);
