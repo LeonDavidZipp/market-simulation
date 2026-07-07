@@ -28,10 +28,9 @@ impl Market {
         let book = &mut self.order_book;
         let mut rng: rand::prelude::ThreadRng = rng();
         let dist = cfg.init_distributions()?;
-        let n_ticks_total = cfg.n_steps * cfg.n_ticks_per_candle;
+        let n_ticks_total = cfg.calc_n_total_ticks();
         let mut tick = 1;
-        let mut trade_prices: Vec<f32> =
-            Vec::with_capacity((cfg.trade_prob * cfg.n_traders as f32) as usize);
+        let mut trade_prices: Vec<f32> = Vec::with_capacity(cfg.calc_mean_n_trades());
         book.last_traded_price = cfg.initial_open;
         for _ in 0..n_ticks_total {
             let n_orders: u64 = dist.orders.sample(&mut rng);
@@ -148,6 +147,14 @@ impl MarketConfig {
             shock_intensity,
             shock_type,
         })
+    }
+
+    fn calc_mean_n_trades(&self) -> usize {
+        (self.trade_prob * self.n_traders as f32) as usize
+    }
+
+    fn calc_n_total_ticks(&self) -> usize {
+        self.n_steps * self.n_ticks_per_candle
     }
 }
 
