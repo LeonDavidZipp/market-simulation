@@ -37,9 +37,8 @@ impl Market {
             for _ in 0..n_orders {
                 let price = book.last_traded_price * (1.0 + dist.price_factor.sample(&mut rng));
                 let quantity = dist.quantity.sample(&mut rng);
-                let order = Order::new(price, quantity);
                 let inserted_is_bid = price >= book.last_traded_price;
-                book.insert_order(order, inserted_is_bid);
+                book.insert_order(Order::new(price, quantity), inserted_is_bid);
                 let Some(mut data) = book.resolve(inserted_is_bid) else {
                     continue;
                 };
