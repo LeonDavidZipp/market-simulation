@@ -7,51 +7,6 @@ use rand_distr::uniform::Error as UniformError;
 use rand_distr::{Binomial, BinomialError, Distribution, Normal, NormalError, Uniform};
 use std::io::Write;
 
-#[derive(Debug)]
-pub enum MarketError {
-    EmptyData(EmptyDataError),
-    InvalidDistribution(NormalError),
-    InvalidBinomial(BinomialError),
-    InvalidUniform(UniformError),
-}
-
-impl std::fmt::Display for MarketError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            MarketError::EmptyData(e) => write!(f, "empty data: {e}"),
-            MarketError::InvalidDistribution(e) => write!(f, "invalid distribution: {e}"),
-            MarketError::InvalidBinomial(e) => write!(f, "invalid binomial: {e}"),
-            MarketError::InvalidUniform(e) => write!(f, "invalid uniform: {e}"),
-        }
-    }
-}
-
-impl std::error::Error for MarketError {}
-
-impl From<EmptyDataError> for MarketError {
-    fn from(e: EmptyDataError) -> Self {
-        MarketError::EmptyData(e)
-    }
-}
-
-impl From<NormalError> for MarketError {
-    fn from(e: NormalError) -> Self {
-        MarketError::InvalidDistribution(e)
-    }
-}
-
-impl From<BinomialError> for MarketError {
-    fn from(e: BinomialError) -> Self {
-        MarketError::InvalidBinomial(e)
-    }
-}
-
-impl From<UniformError> for MarketError {
-    fn from(e: UniformError) -> Self {
-        MarketError::InvalidUniform(e)
-    }
-}
-
 #[derive(Clone)]
 pub struct Market {
     config: MarketConfig,
@@ -176,5 +131,50 @@ impl Market {
         let mut df = self.history_to_df()?;
         CsvWriter::new(writer).finish(&mut df)?;
         Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub enum MarketError {
+    EmptyData(EmptyDataError),
+    InvalidDistribution(NormalError),
+    InvalidBinomial(BinomialError),
+    InvalidUniform(UniformError),
+}
+
+impl std::fmt::Display for MarketError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MarketError::EmptyData(e) => write!(f, "empty data: {e}"),
+            MarketError::InvalidDistribution(e) => write!(f, "invalid distribution: {e}"),
+            MarketError::InvalidBinomial(e) => write!(f, "invalid binomial: {e}"),
+            MarketError::InvalidUniform(e) => write!(f, "invalid uniform: {e}"),
+        }
+    }
+}
+
+impl std::error::Error for MarketError {}
+
+impl From<EmptyDataError> for MarketError {
+    fn from(e: EmptyDataError) -> Self {
+        MarketError::EmptyData(e)
+    }
+}
+
+impl From<NormalError> for MarketError {
+    fn from(e: NormalError) -> Self {
+        MarketError::InvalidDistribution(e)
+    }
+}
+
+impl From<BinomialError> for MarketError {
+    fn from(e: BinomialError) -> Self {
+        MarketError::InvalidBinomial(e)
+    }
+}
+
+impl From<UniformError> for MarketError {
+    fn from(e: UniformError) -> Self {
+        MarketError::InvalidUniform(e)
     }
 }
