@@ -143,11 +143,8 @@ impl Market {
             }
             if tick == cfg.n_ticks_per_candle {
                 let candle = CandleData::from_data(&trade_prices);
-                match candle {
-                    Ok(c) => {
-                        self.history.push(c);
-                    }
-                    Err(_) => {}
+                if let Ok(c) = candle {
+                    self.history.push(c);
                 }
                 tick = 0;
                 trade_prices.clear();
@@ -155,9 +152,9 @@ impl Market {
                 if shock_prob_dist.sample(&mut rng) >= cfg.shock_prob {
                     let intensity = shock_intensity_dist.sample(&mut rng);
                     if shock_type_dist.sample(&mut rng) < cfg.spike_ratio {
-                        book.last_traded_price = book.last_traded_price * (1.0 - intensity);
+                        book.last_traded_price *= (1.0 - intensity);
                     } else {
-                        book.last_traded_price = book.last_traded_price * (1.0 + intensity);
+                        book.last_traded_price *= (1.0 + intensity);
                     }
                 }
             } else {

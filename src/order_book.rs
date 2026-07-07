@@ -99,14 +99,14 @@ impl OrderBook {
     pub fn insert_bid(&mut self, order: Order) {
         self.bids
             .entry(OrderedFloat(order.price))
-            .or_insert_with(VecDeque::new)
+            .or_default()
             .push_back(order);
     }
 
     pub fn insert_ask(&mut self, order: Order) {
         self.asks
             .entry(OrderedFloat(order.price))
-            .or_insert_with(VecDeque::new)
+            .or_default()
             .push_back(order);
     }
 
@@ -146,14 +146,12 @@ impl OrderBook {
                 if bid_orders.is_empty() {
                     bids.remove(&bid_price);
                 }
-            } else {
             }
             if *ask_quant <= 0.0 {
                 ask_orders.pop_front();
                 if ask_orders.is_empty() {
                     asks.remove(&ask_price);
                 }
-            } else {
             }
             if inserted_is_bid {
                 trade_prices.push(ask_price.into_inner());

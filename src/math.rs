@@ -24,9 +24,9 @@ pub fn calc_nth_percentile(data: &[f32], perc: f32) -> Option<f32> {
     let lower_idx = rank.floor() as usize;
     let upper_idx = rank.ceil() as usize;
     if lower_idx == upper_idx {
-        return Some(sorted[lower_idx]);
+        Some(sorted[lower_idx])
     } else {
-        return Some((sorted[lower_idx] + sorted[upper_idx]) / 2.0);
+        Some((sorted[lower_idx] + sorted[upper_idx]) / 2.0)
     }
 }
 
