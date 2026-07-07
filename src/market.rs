@@ -15,6 +15,19 @@ pub enum MarketError {
     InvalidUniform(UniformError),
 }
 
+impl std::fmt::Display for MarketError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MarketError::EmptyData(e) => write!(f, "empty data: {e}"),
+            MarketError::InvalidDistribution(e) => write!(f, "invalid distribution: {e}"),
+            MarketError::InvalidBinomial(e) => write!(f, "invalid binomial: {e}"),
+            MarketError::InvalidUniform(e) => write!(f, "invalid uniform: {e}"),
+        }
+    }
+}
+
+impl std::error::Error for MarketError {}
+
 impl From<EmptyDataError> for MarketError {
     fn from(e: EmptyDataError) -> Self {
         MarketError::EmptyData(e)
@@ -61,40 +74,6 @@ pub struct MarketConfig {
     pub shock_intensity: f32,
     pub shock_intensity_std: f32,
     pub spike_ratio: f32,
-}
-
-impl MarketConfig {
-    pub fn new(
-        n_traders: usize,
-        trade_prob: f32,
-        initial_open: f32,
-        open_std: f32,
-        skew: f32,
-        n_runs: usize,
-        n_ticks_per_candle: usize,
-        min_quantity: f32,
-        max_quantity: f32,
-        shock_prob: f32,
-        shock_intensity: f32,
-        shock_intensity_std: f32,
-        spike_ratio: f32,
-    ) -> MarketConfig {
-        MarketConfig {
-            n_traders,
-            trade_prob,
-            initial_open,
-            open_std,
-            skew,
-            n_runs,
-            n_ticks_per_candle,
-            min_quantity,
-            max_quantity,
-            shock_prob,
-            shock_intensity,
-            shock_intensity_std,
-            spike_ratio,
-        }
-    }
 }
 
 impl Market {
@@ -152,9 +131,9 @@ impl Market {
                 if shock_prob_dist.sample(&mut rng) >= cfg.shock_prob {
                     let intensity = shock_intensity_dist.sample(&mut rng);
                     if shock_type_dist.sample(&mut rng) < cfg.spike_ratio {
-                        book.last_traded_price *= (1.0 - intensity);
+                        book.last_traded_price *= 1.0 - intensity;
                     } else {
-                        book.last_traded_price *= (1.0 + intensity);
+                        book.last_traded_price *= 1.0 + intensity;
                     }
                 }
             } else {

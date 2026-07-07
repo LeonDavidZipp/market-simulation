@@ -34,28 +34,6 @@ pub struct CandleData {
 }
 
 impl CandleData {
-    pub fn new(
-        min: f32,
-        max: f32,
-        mean: f32,
-        median: f32,
-        perc_25: f32,
-        perc_75: f32,
-        open: f32,
-        close: f32,
-    ) -> CandleData {
-        CandleData {
-            min,
-            max,
-            mean,
-            median,
-            perc_25,
-            perc_75,
-            open,
-            close,
-        }
-    }
-
     pub fn from_data(data: &[f32]) -> Result<CandleData, EmptyDataError> {
         if data.is_empty() {
             return Err(EmptyDataError);
@@ -69,14 +47,29 @@ impl CandleData {
         let perc_75 = calc_75th_percentile(data).ok_or(EmptyDataError)?;
         let open = *data.first().ok_or(EmptyDataError)?;
         let close = *data.last().ok_or(EmptyDataError)?;
-        Ok(CandleData::new(
-            min, max, mean, median, perc_25, perc_75, open, close,
-        ))
+        Ok(CandleData {
+            min,
+            max,
+            mean,
+            median,
+            perc_25,
+            perc_75,
+            open,
+            close,
+        })
     }
 }
 
 #[derive(Debug)]
 pub struct EmptyDataError;
+
+impl Display for EmptyDataError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "data is empty")
+    }
+}
+
+impl std::error::Error for EmptyDataError {}
 
 #[derive(Clone)]
 pub struct OrderBook {
