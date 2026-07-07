@@ -38,6 +38,22 @@ struct Cli {
 
     #[arg(long = "max-quantity", visible_alias = "mxq", default_value_t = 10.0)]
     max_quantity: f32,
+
+    #[arg(long = "shock-prob", visible_alias = "shp", default_value_t = 0.0)]
+    shock_prob: f32,
+
+    #[arg(long = "shock-intensity", visible_alias = "shi", default_value_t = 0.3)]
+    shock_intensity: f32,
+
+    #[arg(
+        long = "shock-intensity-std",
+        visible_alias = "shs",
+        default_value_t = 0.2
+    )]
+    shock_intensity_std: f32,
+
+    #[arg(long = "spike-ratio", visible_alias = "sr", default_value_t = 0.5)]
+    spike_ratio: f32,
 }
 
 fn main() {
@@ -53,6 +69,10 @@ fn main() {
         n_ticks_per_candle: cli.n_ticks_per_candle,
         min_quantity: cli.min_quantity,
         max_quantity: cli.max_quantity,
+        shock_prob: cli.shock_prob,
+        shock_intensity: cli.shock_intensity,
+        shock_intensity_std: cli.shock_intensity_std,
+        spike_ratio: cli.spike_ratio,
     };
 
     let mut market = Market::with_config(cfg);

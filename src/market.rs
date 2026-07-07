@@ -57,6 +57,10 @@ pub struct MarketConfig {
     pub n_ticks_per_candle: usize,
     pub min_quantity: f32,
     pub max_quantity: f32,
+    pub shock_prob: f32,
+    pub shock_intensity: f32,
+    pub shock_intensity_std: f32,
+    pub spike_ratio: f32,
 }
 
 impl MarketConfig {
@@ -70,6 +74,10 @@ impl MarketConfig {
         n_ticks_per_candle: usize,
         min_quantity: f32,
         max_quantity: f32,
+        shock_prob: f32,
+        shock_intensity: f32,
+        shock_intensity_std: f32,
+        spike_ratio: f32,
     ) -> MarketConfig {
         MarketConfig {
             n_traders,
@@ -81,6 +89,10 @@ impl MarketConfig {
             n_ticks_per_candle,
             min_quantity,
             max_quantity,
+            shock_prob,
+            shock_intensity,
+            shock_intensity_std,
+            spike_ratio,
         }
     }
 }
@@ -105,6 +117,10 @@ impl Market {
         let n_ticks_total = cfg.n_runs * cfg.n_ticks_per_candle;
         let mut tick = 1;
         let mut trade_prices: Vec<f32> = Vec::with_capacity(cfg.n_ticks_per_candle);
+        let shock_prob_dist: Uniform<f32> = Uniform::new_inclusive(0.0, 1.0)?;
+        let shock_intensity_dist: Normal<f32> =
+            Normal::new(cfg.shock_intensity, cfg.shock_intensity_std)?;
+        let shock_type_dist: Uniform<f32> = Uniform::new_inclusive(0.0, 1.0)?;
         for _ in 0..n_ticks_total {
             let n_orders: u64 = orders_dist.sample(&mut rng);
             for _ in 0..n_orders {
@@ -135,6 +151,15 @@ impl Market {
                 }
                 tick = 0;
                 trade_prices.clear();
+
+                if shock_prob_dist.sample(&mut rng) >= cfg.shock_prob {
+                    let intensity = shock_intensity_dist.sample(&mut rng);
+                    if shock_type_dist.sample(&mut rng) < cfg.spike_ratio {
+                        book.last_traded_price = book.last_traded_price * (1.0 - intensity);
+                    } else {
+                        book.last_traded_price = book.last_traded_price * (1.0 + intensity);
+                    }
+                }
             } else {
                 tick += 1;
             };
