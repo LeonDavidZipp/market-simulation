@@ -81,12 +81,12 @@ impl Market {
         Market {
             config: cfg,
             order_book: OrderBook::default(),
-            history: Vec::with_capacity(16),
+            history: Vec::with_capacity(256),
         }
     }
 
     pub fn run(&mut self) -> Result<(), MarketError> {
-        let cfg = self.config;
+        let cfg = &self.config;
         let book = &mut self.order_book;
         book.last_traded_price = cfg.initial_open;
         let mut rng: rand::prelude::ThreadRng = rng();
@@ -128,7 +128,7 @@ impl Market {
                 tick = 0;
                 trade_prices.clear();
 
-                if shock_prob_dist.sample(&mut rng) >= cfg.shock_prob {
+                if shock_prob_dist.sample(&mut rng) < cfg.shock_prob {
                     let intensity = shock_intensity_dist.sample(&mut rng);
                     if shock_type_dist.sample(&mut rng) < cfg.spike_ratio {
                         book.last_traded_price *= 1.0 - intensity;
