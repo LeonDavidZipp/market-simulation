@@ -12,8 +12,8 @@ use std::time::Instant;
 
 #[derive(Parser)]
 struct Cli {
-    #[arg(short = 'n', long = "n-runs", default_value_t = 100)]
-    n_runs: usize,
+    #[arg(short = 'n', long = "n-steps", default_value_t = 100)]
+    n_steps: usize,
 
     #[arg(short = 'o', long = "out")]
     out: PathBuf,
@@ -33,8 +33,12 @@ struct Cli {
     #[arg(long = "open", visible_alias = "op", default_value_t = 100.0)]
     open: f32,
 
-    #[arg(long = "open-std", visible_alias = "os", default_value_t = 0.01)]
-    open_std: f32,
+    #[arg(
+        long = "order-price-std",
+        visible_alias = "ops",
+        default_value_t = 0.01
+    )]
+    order_price_std: f32,
 
     #[arg(long = "skew", visible_alias = "sk", default_value_t = 0.0)]
     skew: f32,
@@ -70,9 +74,9 @@ async fn main() {
         n_traders: cli.n_traders,
         trade_prob: cli.trade_prob,
         initial_open: cli.open,
-        open_std: cli.open_std,
+        order_price_std: cli.order_price_std,
         skew: cli.skew,
-        n_runs: cli.n_runs,
+        n_steps: cli.n_steps,
         n_ticks_per_candle: cli.n_ticks_per_candle,
         min_quantity: cli.min_quantity,
         max_quantity: cli.max_quantity,

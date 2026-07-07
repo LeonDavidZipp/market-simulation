@@ -64,9 +64,9 @@ pub struct MarketConfig {
     pub n_traders: usize,
     pub trade_prob: f32,
     pub initial_open: f32,
-    pub open_std: f32,
+    pub order_price_std: f32,
     pub skew: f32,
-    pub n_runs: usize,
+    pub n_steps: usize,
     pub n_ticks_per_candle: usize,
     pub min_quantity: f32,
     pub max_quantity: f32,
@@ -90,10 +90,10 @@ impl Market {
         let book = &mut self.order_book;
         book.last_traded_price = cfg.initial_open;
         let mut rng: rand::prelude::ThreadRng = rng();
-        let price_factor_dist: Normal<f32> = Normal::new(cfg.skew, cfg.open_std)?;
+        let price_factor_dist: Normal<f32> = Normal::new(cfg.skew, cfg.order_price_std)?;
         let orders_dist = Binomial::new(cfg.n_traders as u64, cfg.trade_prob as f64)?;
         let quantity_dist = Uniform::new_inclusive(cfg.min_quantity, cfg.max_quantity)?;
-        let n_ticks_total = cfg.n_runs * cfg.n_ticks_per_candle;
+        let n_ticks_total = cfg.n_steps * cfg.n_ticks_per_candle;
         let mut tick = 1;
         let mut trade_prices: Vec<f32> = Vec::with_capacity(cfg.n_ticks_per_candle);
         let shock_prob_dist: Uniform<f32> = Uniform::new_inclusive(0.0, 1.0)?;
