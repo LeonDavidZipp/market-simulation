@@ -4,7 +4,7 @@ mod plot;
 mod simulation;
 
 use clap::Parser;
-use simulation::{Simulation, SimulationConfig};
+use simulation::{Simulation, SimulationConfig, SimulationError};
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -137,12 +137,23 @@ struct RunConfig {
 
 async fn run_simulation(cfg: RunConfig) {
     let m_cfg = cfg.simulation_cfg;
-    let mut simulation = Simulation::with_config(m_cfg, cfg.seed);
+    let seed = cfg.seed;
     let sim_start = Instant::now();
-    if let Err(e) = simulation.run() {
-        eprintln!("run {} simulation failed: {e}", cfg.num);
-        std::process::exit(1);
-    }
+    let simulation = tokio::task::spawn_blocking(move || {
+        let mut simulation = Simulation::with_config(m_cfg, seed);
+        simulation.run()?;
+        Ok::<_, SimulationError>(simulation)
+    })
+    .await
+    .expect("simulation task panicked");
+
+    let simulation = match simulation {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("run {} simulation failed: {e}", cfg.num);
+            std::process::exit(1);
+        }
+    };
     println!(
         "run {} simulation took {:.3?}",
         cfg.num,
