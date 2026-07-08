@@ -15,14 +15,14 @@ struct Cli {
     #[arg(short = 'o', long = "out")]
     out: PathBuf,
 
+    #[arg(long = "chart-out", visible_alias = "co")]
+    chart_out: Option<PathBuf>,
+
     #[arg(short = 'n', long = "n-steps", default_value_t = 100)]
     n_steps: usize,
 
     #[arg(long = "n-runs", visible_alias = "nr", default_value_t = 1)]
     n_runs: usize,
-
-    #[arg(long = "chart-out", visible_alias = "co")]
-    chart_out: Option<PathBuf>,
 
     #[arg(long = "n-traders", visible_alias = "nt", default_value_t = 1000)]
     n_traders: usize,
@@ -119,28 +119,6 @@ async fn main() {
     }
 }
 
-fn write_output(market: &Market, out: &PathBuf) -> Result<(), String> {
-    let extension = out.extension().and_then(|e| e.to_str());
-    let file = || File::create(out).map_err(|e| e.to_string());
-
-    match extension {
-        Some("csv") => market.history_to_csv(file()?).map_err(|e| e.to_string()),
-        Some("parquet") => market
-            .history_to_parquet(file()?)
-            .map_err(|e| e.to_string()),
-        Some(other) => Err(format!("unsupported output file extension: .{other}")),
-        None => Err("output file has no extension; cannot infer format".to_string()),
-    }
-}
-
-fn write_chart(market: &Market, out: &Path) -> Result<(), String> {
-    let df = market.history_to_df().map_err(|e| e.to_string())?;
-    let path = out
-        .to_str()
-        .ok_or_else(|| "chart output path is not valid UTF-8".to_string())?;
-    plot::plot_candles(&df, path).map_err(|e| e.to_string())
-}
-
 struct RunConfig {
     num: usize,
     market_cfg: Arc<MarketConfig>,
@@ -191,4 +169,26 @@ async fn run_simulation(cfg: RunConfig) {
         cfg.num,
         save_start.elapsed()
     );
+}
+
+fn write_output(market: &Market, out: &PathBuf) -> Result<(), String> {
+    let extension = out.extension().and_then(|e| e.to_str());
+    let file = || File::create(out).map_err(|e| e.to_string());
+
+    match extension {
+        Some("csv") => market.history_to_csv(file()?).map_err(|e| e.to_string()),
+        Some("parquet") => market
+            .history_to_parquet(file()?)
+            .map_err(|e| e.to_string()),
+        Some(other) => Err(format!("unsupported output file extension: .{other}")),
+        None => Err("output file has no extension; cannot infer format".to_string()),
+    }
+}
+
+fn write_chart(market: &Market, out: &Path) -> Result<(), String> {
+    let df = market.history_to_df().map_err(|e| e.to_string())?;
+    let path = out
+        .to_str()
+        .ok_or_else(|| "chart output path is not valid UTF-8".to_string())?;
+    plot::plot_candles(&df, path).map_err(|e| e.to_string())
 }
