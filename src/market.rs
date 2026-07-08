@@ -2,7 +2,8 @@ use crate::order_book::EmptyDataError;
 use crate::order_book::{CandleData, Order, OrderBook};
 use polars::error::PolarsError;
 use polars::prelude::{CsvWriter, DataFrame, ParquetWriter, SerWriter, df};
-use rand::rng;
+use rand::rngs::StdRng;
+use rand::SeedableRng;
 use rand_distr::uniform::Error as UniformError;
 use rand_distr::{Binomial, BinomialError, Distribution, Normal, NormalError, Uniform};
 use std::io::Write;
@@ -26,7 +27,8 @@ impl Market {
     pub fn run(&mut self) -> Result<(), MarketError> {
         let cfg = &self.config;
         let book = &mut self.order_book;
-        let mut rng: rand::prelude::ThreadRng = rng();
+        let seed = cfg.seed.map(u64::from).unwrap_or_else(rand::random);
+        let mut rng = StdRng::seed_from_u64(seed);
         let dist = cfg.init_distributions()?;
         let n_ticks_total = cfg.calc_n_total_ticks();
         let mut tick = 1;
@@ -120,6 +122,7 @@ impl Market {
 
 #[derive(Clone, Copy)]
 pub struct MarketConfig {
+    pub seed: Option<u32>,
     pub n_traders: usize,
     pub trade_prob: f32,
     pub initial_open: f32,

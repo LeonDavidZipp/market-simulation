@@ -12,6 +12,13 @@ use std::time::Instant;
 
 #[derive(Parser)]
 struct Cli {
+    #[arg(
+        short = 's',
+        long = "seed",
+        help = "Only meaningful with --n-runs 1; with more runs every run would reuse the same seed and produce identical results"
+    )]
+    seed: Option<u32>,
+
     #[arg(short = 'o', long = "out")]
     out: PathBuf,
 
@@ -74,6 +81,7 @@ async fn main() {
     let cli = Cli::parse();
 
     let cfg = Arc::new(MarketConfig {
+        seed: cli.seed,
         n_traders: cli.n_traders,
         trade_prob: cli.trade_prob,
         initial_open: cli.open,
