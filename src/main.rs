@@ -1,10 +1,10 @@
-mod market;
 mod math;
 mod order_book;
 mod plot;
+mod simulation;
 
 use clap::Parser;
-use market::{Simulation, SimulationConfig};
+use simulation::{Simulation, SimulationConfig};
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
