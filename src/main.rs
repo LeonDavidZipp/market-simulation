@@ -12,11 +12,14 @@ use std::time::Instant;
 
 #[derive(Parser)]
 struct Cli {
+    #[arg(short = 'o', long = "out")]
+    out: PathBuf,
+
     #[arg(short = 'n', long = "n-steps", default_value_t = 100)]
     n_steps: usize,
 
-    #[arg(short = 'o', long = "out")]
-    out: PathBuf,
+    #[arg(long = "n-runs", visible_alias = "nr", default_value_t = 1)]
+    n_runs: usize,
 
     #[arg(long = "chart-out", visible_alias = "co")]
     chart_out: Option<PathBuf>,
@@ -143,3 +146,5 @@ fn write_chart(market: &Market, out: &Path) -> Result<(), String> {
         .ok_or_else(|| "chart output path is not valid UTF-8".to_string())?;
     plot::plot_candles(&df, path).map_err(|e| e.to_string())
 }
+
+fn run_simulation()
