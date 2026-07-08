@@ -15,7 +15,7 @@ struct Cli {
     #[arg(
         short = 's',
         long = "seed",
-        help = "Only meaningful with --n-runs 1; with more runs every run would reuse the same seed and produce identical results"
+        help = "Base RNG seed; with --n-runs > 1, run N uses seed + N so each run is distinct but reproducible"
     )]
     seed: Option<u32>,
 
@@ -81,7 +81,6 @@ async fn main() {
     let cli = Cli::parse();
 
     let cfg = Arc::new(SimulationConfig {
-        seed: cli.seed,
         n_traders: cli.n_traders,
         trade_prob: cli.trade_prob,
         initial_open: cli.open,
@@ -112,6 +111,7 @@ async fn main() {
     for num in 0..cli.n_runs {
         let run_cfg = RunConfig {
             num,
+            seed: cli.seed.map(|s| s.wrapping_add(num as u32)),
             simulation_cfg: Arc::clone(&cfg),
             out: cli.out.join(format!("run{num}.parquet")),
             chart_out: cli
@@ -129,14 +129,15 @@ async fn main() {
 
 struct RunConfig {
     num: usize,
+    seed: Option<u32>,
     simulation_cfg: Arc<SimulationConfig>,
     out: PathBuf,
     chart_out: Option<PathBuf>,
 }
 
 async fn run_simulation(cfg: RunConfig) {
-    let m_cfg = &cfg.simulation_cfg;
-    let mut simulation = Simulation::with_config(**m_cfg);
+    let m_cfg = cfg.simulation_cfg;
+    let mut simulation = Simulation::with_config(m_cfg, cfg.seed);
     let sim_start = Instant::now();
     if let Err(e) = simulation.run() {
         eprintln!("run {} simulation failed: {e}", cfg.num);

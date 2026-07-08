@@ -7,17 +7,20 @@ use rand::rngs::StdRng;
 use rand_distr::uniform::Error as UniformError;
 use rand_distr::{Binomial, BinomialError, Distribution, Normal, NormalError, Uniform};
 use std::io::Write;
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct Simulation {
-    config: SimulationConfig,
+    config: Arc<SimulationConfig>,
+    seed: Option<u32>,
     order_book: OrderBook,
     history: Vec<CandleData>,
 }
 
 impl Simulation {
-    pub fn with_config(cfg: SimulationConfig) -> Simulation {
+    pub fn with_config(cfg: Arc<SimulationConfig>, seed: Option<u32>) -> Simulation {
         Simulation {
+            seed,
             config: cfg,
             order_book: OrderBook::default(),
             history: Vec::with_capacity(256),
@@ -27,7 +30,7 @@ impl Simulation {
     pub fn run(&mut self) -> Result<(), SimulationError> {
         let cfg = &self.config;
         let book = &mut self.order_book;
-        let seed = cfg.seed.map(u64::from).unwrap_or_else(rand::random);
+        let seed = self.seed.map(u64::from).unwrap_or_else(rand::random);
         let mut rng = StdRng::seed_from_u64(seed);
         let dist = cfg.init_distributions()?;
         let n_ticks_total = cfg.calc_n_total_ticks();
@@ -120,9 +123,8 @@ impl Simulation {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct SimulationConfig {
-    pub seed: Option<u32>,
     pub n_traders: usize,
     pub trade_prob: f32,
     pub initial_open: f32,
