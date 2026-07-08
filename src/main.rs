@@ -147,4 +147,54 @@ fn write_chart(market: &Market, out: &Path) -> Result<(), String> {
     plot::plot_candles(&df, path).map_err(|e| e.to_string())
 }
 
-fn run_simulation()
+struct RunConfig {
+    num: usize,
+    market_cfg: Arc<MarketConfig>,
+    out: PathBuf,
+    chart_out: Option<PathBuf>,
+}
+
+async fn run_simulation(cfg: RunConfig) {
+    let m_cfg = &cfg.market_cfg;
+    let mut market = Market::with_config(**m_cfg);
+    let sim_start = Instant::now();
+    if let Err(e) = market.run() {
+        eprintln!("run {} simulation failed: {e}", cfg.num);
+        std::process::exit(1);
+    }
+    println!(
+        "run {} simulation took {:.3?}",
+        cfg.num,
+        sim_start.elapsed()
+    );
+
+    let market = Arc::new(market);
+    let save_start = Instant::now();
+
+    let write_market = Arc::clone(&market);
+    let out_path = cfg.out.clone();
+    let write_handle = tokio::task::spawn_blocking(move || write_output(&write_market, &out_path));
+
+    let chart_handle = cfg.chart_out.clone().map(|chart_path| {
+        let chart_market = Arc::clone(&market);
+        tokio::task::spawn_blocking(move || write_chart(&chart_market, &chart_path))
+    });
+
+    if let Err(e) = write_handle.await.expect("data-saving task panicked") {
+        eprintln!("run {} error saving data: {e}", cfg.num);
+        std::process::exit(1);
+    }
+
+    if let Some(handle) = chart_handle
+        && let Err(e) = handle.await.expect("chart-saving task panicked")
+    {
+        eprintln!("run {} error saving chart: {e}", cfg.num);
+        std::process::exit(1);
+    }
+
+    println!(
+        " run {} output saving took {:.3?}",
+        cfg.num,
+        save_start.elapsed()
+    );
+}
