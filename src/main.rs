@@ -73,7 +73,7 @@ struct Cli {
 async fn main() {
     let cli = Cli::parse();
 
-    let cfg = MarketConfig {
+    let cfg = Arc::new(MarketConfig {
         n_traders: cli.n_traders,
         trade_prob: cli.trade_prob,
         initial_open: cli.open,
@@ -87,42 +87,36 @@ async fn main() {
         shock_intensity: cli.shock_intensity,
         shock_intensity_std: cli.shock_intensity_std,
         spike_ratio: cli.spike_ratio,
-    };
-
-    let mut market = Market::with_config(cfg);
-
-    let sim_start = Instant::now();
-    if let Err(e) = market.run() {
-        eprintln!("simulation failed: {e}");
-        std::process::exit(1);
-    }
-    println!("simulation took {:.3?}", sim_start.elapsed());
-
-    let market = Arc::new(market);
-    let save_start = Instant::now();
-
-    let write_market = Arc::clone(&market);
-    let out_path = cli.out.clone();
-    let write_handle = tokio::task::spawn_blocking(move || write_output(&write_market, &out_path));
-
-    let chart_handle = cli.chart_out.clone().map(|chart_path| {
-        let chart_market = Arc::clone(&market);
-        tokio::task::spawn_blocking(move || write_chart(&chart_market, &chart_path))
     });
 
-    if let Err(e) = write_handle.await.expect("data-saving task panicked") {
-        eprintln!("error saving data: {e}");
+    if let Err(e) = std::fs::create_dir_all(&cli.out) {
+        eprintln!("failed to create output directory: {e}");
         std::process::exit(1);
     }
-
-    if let Some(handle) = chart_handle
-        && let Err(e) = handle.await.expect("chart-saving task panicked")
+    if let Some(chart_dir) = &cli.chart_out
+        && let Err(e) = std::fs::create_dir_all(chart_dir)
     {
-        eprintln!("error saving chart: {e}");
+        eprintln!("failed to create chart output directory: {e}");
         std::process::exit(1);
     }
 
-    println!("output saving took {:.3?}", save_start.elapsed());
+    let mut handles = Vec::with_capacity(cli.n_runs);
+    for num in 0..cli.n_runs {
+        let run_cfg = RunConfig {
+            num,
+            market_cfg: Arc::clone(&cfg),
+            out: cli.out.join(format!("run{num}.parquet")),
+            chart_out: cli
+                .chart_out
+                .as_ref()
+                .map(|dir| dir.join(format!("run{num}.svg"))),
+        };
+        handles.push(tokio::spawn(run_simulation(run_cfg)));
+    }
+
+    for handle in handles {
+        handle.await.expect("run task panicked");
+    }
 }
 
 fn write_output(market: &Market, out: &PathBuf) -> Result<(), String> {
