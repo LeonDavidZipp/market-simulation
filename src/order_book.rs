@@ -3,81 +3,6 @@ use ordered_float::OrderedFloat;
 use std::collections::{BTreeMap, VecDeque};
 use std::fmt::{self, Display};
 
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub struct Order {
-    pub price: f32,
-    pub quantity: f32,
-}
-
-impl Order {
-    pub fn new(price: f32, quantity: f32) -> Order {
-        Order { price, quantity }
-    }
-}
-
-impl Display for Order {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} @ {}", self.quantity, self.price)
-    }
-}
-
-#[derive(Clone, Copy)]
-pub struct CandleData {
-    pub min: f32,
-    pub max: f32,
-    pub mean: f32,
-    pub median: f32,
-    pub perc_25: f32,
-    pub perc_75: f32,
-    pub open: f32,
-    pub close: f32,
-}
-
-impl CandleData {
-    pub fn new(
-        min: f32,
-        max: f32,
-        mean: f32,
-        median: f32,
-        perc_25: f32,
-        perc_75: f32,
-        open: f32,
-        close: f32,
-    ) -> CandleData {
-        CandleData {
-            min,
-            max,
-            mean,
-            median,
-            perc_25,
-            perc_75,
-            open,
-            close,
-        }
-    }
-
-    pub fn from_data(data: &[f32]) -> Result<CandleData, EmptyDataError> {
-        if data.is_empty() {
-            return Err(EmptyDataError);
-        }
-        let max = data.iter().copied().fold(f32::MIN, f32::max);
-        let min = data.iter().copied().fold(f32::MAX, f32::min);
-        let sum: f32 = data.iter().copied().sum();
-        let mean = sum / data.len() as f32;
-        let median = calc_median(data).ok_or(EmptyDataError)?;
-        let perc_25 = calc_25th_percentile(data).ok_or(EmptyDataError)?;
-        let perc_75 = calc_75th_percentile(data).ok_or(EmptyDataError)?;
-        let open = *data.first().ok_or(EmptyDataError)?;
-        let close = *data.last().ok_or(EmptyDataError)?;
-        Ok(CandleData::new(
-            min, max, mean, median, perc_25, perc_75, open, close,
-        ))
-    }
-}
-
-#[derive(Debug)]
-pub struct EmptyDataError;
-
 #[derive(Clone)]
 pub struct OrderBook {
     pub last_traded_price: f32,
@@ -96,24 +21,21 @@ impl Default for OrderBook {
 }
 
 impl OrderBook {
-    pub fn insert_bid(&mut self, order: Order) {
-        self.bids
-            .entry(OrderedFloat(order.price))
-            .or_insert_with(VecDeque::new)
-            .push_back(order);
-    }
-
-    pub fn insert_ask(&mut self, order: Order) {
-        self.asks
-            .entry(OrderedFloat(order.price))
-            .or_insert_with(VecDeque::new)
+    pub fn insert_order(&mut self, order: Order, is_bid: bool) {
+        let side = if is_bid {
+            &mut self.bids
+        } else {
+            &mut self.asks
+        };
+        side.entry(OrderedFloat(order.price))
+            .or_default()
             .push_back(order);
     }
 
     pub fn resolve(&mut self, inserted_is_bid: bool) -> Option<Vec<f32>> {
         let bids = &mut self.bids;
         let asks = &mut self.asks;
-        let mut trade_prices: Vec<f32> = Vec::with_capacity(2);
+        let mut trade_prices: Option<Vec<f32>> = None;
         loop {
             let Some((&bid_price, _)) = bids.iter().next_back() else {
                 break;
@@ -146,28 +68,96 @@ impl OrderBook {
                 if bid_orders.is_empty() {
                     bids.remove(&bid_price);
                 }
-            } else {
             }
             if *ask_quant <= 0.0 {
                 ask_orders.pop_front();
                 if ask_orders.is_empty() {
                     asks.remove(&ask_price);
                 }
-            } else {
             }
             if inserted_is_bid {
-                trade_prices.push(ask_price.into_inner());
+                trade_prices
+                    .get_or_insert_with(Vec::new)
+                    .push(ask_price.into_inner());
             } else {
-                trade_prices.push(bid_price.into_inner());
+                trade_prices
+                    .get_or_insert_with(Vec::new)
+                    .push(bid_price.into_inner());
             }
         }
-        if trade_prices.is_empty() {
-            None
-        } else {
-            Some(trade_prices)
-        }
+        trade_prices
     }
 }
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub struct Order {
+    pub price: f32,
+    pub quantity: f32,
+}
+
+impl Order {
+    pub fn new(price: f32, quantity: f32) -> Order {
+        Order { price, quantity }
+    }
+}
+
+impl Display for Order {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} @ {}", self.quantity, self.price)
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct CandleData {
+    pub min: f32,
+    pub max: f32,
+    pub mean: f32,
+    pub median: f32,
+    pub perc_25: f32,
+    pub perc_75: f32,
+    pub open: f32,
+    pub close: f32,
+}
+
+impl CandleData {
+    pub fn from_data(data: &[f32]) -> Result<CandleData, EmptyDataError> {
+        if data.is_empty() {
+            return Err(EmptyDataError);
+        }
+        let mut d_copy = data.to_vec();
+        d_copy.sort_unstable_by(f32::total_cmp);
+        let max = data.iter().copied().fold(f32::MIN, f32::max);
+        let min = data.iter().copied().fold(f32::MAX, f32::min);
+        let sum: f32 = data.iter().copied().sum();
+        let mean = sum / data.len() as f32;
+        let median = calc_median(&d_copy).ok_or(EmptyDataError)?;
+        let perc_25 = calc_25th_percentile(&d_copy).ok_or(EmptyDataError)?;
+        let perc_75 = calc_75th_percentile(&d_copy).ok_or(EmptyDataError)?;
+        let open = *data.first().ok_or(EmptyDataError)?;
+        let close = *data.last().ok_or(EmptyDataError)?;
+        Ok(CandleData {
+            min,
+            max,
+            mean,
+            median,
+            perc_25,
+            perc_75,
+            open,
+            close,
+        })
+    }
+}
+
+#[derive(Debug)]
+pub struct EmptyDataError;
+
+impl Display for EmptyDataError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "data is empty")
+    }
+}
+
+impl std::error::Error for EmptyDataError {}
 
 #[cfg(test)]
 mod tests {
@@ -218,7 +208,7 @@ mod tests {
     #[test]
     fn test_insert_bid() {
         let mut book = OrderBook::default();
-        book.insert_bid(Order::new(11.0, 12.0));
+        book.insert_order(Order::new(11.0, 12.0), true);
 
         assert_eq!(book.bids.len(), 1);
         let level = book.bids.get(&OrderedFloat(11.0)).unwrap();
@@ -229,7 +219,7 @@ mod tests {
     #[test]
     fn test_insert_ask() {
         let mut book = OrderBook::default();
-        book.insert_ask(Order::new(11.0, 12.0));
+        book.insert_order(Order::new(11.0, 12.0), false);
 
         assert_eq!(book.asks.len(), 1);
         let level = book.asks.get(&OrderedFloat(11.0)).unwrap();
@@ -240,8 +230,8 @@ mod tests {
     #[test]
     fn test_resolve_simple() {
         let mut book = OrderBook::default();
-        book.insert_bid(Order::new(11.0, 12.0));
-        book.insert_ask(Order::new(11.0, 12.0));
+        book.insert_order(Order::new(11.0, 12.0), true);
+        book.insert_order(Order::new(11.0, 12.0), false);
         let trades = book.resolve(false);
 
         assert!(book.bids.is_empty());
@@ -252,9 +242,9 @@ mod tests {
     #[test]
     fn test_resolve_leftover_buy() {
         let mut book = OrderBook::default();
-        book.insert_bid(Order::new(11.0, 12.0));
-        book.insert_bid(Order::new(12.0, 12.0));
-        book.insert_ask(Order::new(11.5, 12.0));
+        book.insert_order(Order::new(11.0, 12.0), true);
+        book.insert_order(Order::new(12.0, 12.0), true);
+        book.insert_order(Order::new(11.5, 12.0), false);
         let trades = book.resolve(false);
         println!("{:?}, {:?}", book.bids, book.asks);
 
@@ -270,9 +260,9 @@ mod tests {
     #[test]
     fn test_resolve_leftover_sell() {
         let mut book = OrderBook::default();
-        book.insert_bid(Order::new(11.5, 12.0));
-        book.insert_ask(Order::new(11.0, 12.0));
-        book.insert_ask(Order::new(12.0, 12.0));
+        book.insert_order(Order::new(11.5, 12.0), true);
+        book.insert_order(Order::new(11.0, 12.0), false);
+        book.insert_order(Order::new(12.0, 12.0), false);
         let trades = book.resolve(false);
 
         assert!(book.bids.is_empty());
@@ -287,9 +277,9 @@ mod tests {
     #[test]
     fn test_partially_resolve_full() {
         let mut book = OrderBook::default();
-        book.insert_bid(Order::new(11.5, 25.0));
-        book.insert_ask(Order::new(11.0, 12.0));
-        book.insert_ask(Order::new(11.5, 13.0));
+        book.insert_order(Order::new(11.5, 25.0), true);
+        book.insert_order(Order::new(11.0, 12.0), false);
+        book.insert_order(Order::new(11.5, 13.0), false);
         let trades = book.resolve(false);
 
         assert!(book.bids.is_empty());
@@ -300,9 +290,9 @@ mod tests {
     #[test]
     fn test_partially_resolve_leftover_buy() {
         let mut book = OrderBook::default();
-        book.insert_bid(Order::new(11.5, 26.0));
-        book.insert_ask(Order::new(11.0, 12.0));
-        book.insert_ask(Order::new(11.5, 13.0));
+        book.insert_order(Order::new(11.5, 26.0), true);
+        book.insert_order(Order::new(11.0, 12.0), false);
+        book.insert_order(Order::new(11.5, 13.0), false);
         let trades = book.resolve(false);
 
         assert!(book.asks.is_empty());
@@ -318,9 +308,9 @@ mod tests {
     #[test]
     fn test_partially_resolve_leftover_sell() {
         let mut book = OrderBook::default();
-        book.insert_bid(Order::new(11.5, 24.0));
-        book.insert_ask(Order::new(11.0, 12.0));
-        book.insert_ask(Order::new(11.5, 13.0));
+        book.insert_order(Order::new(11.5, 24.0), true);
+        book.insert_order(Order::new(11.0, 12.0), false);
+        book.insert_order(Order::new(11.5, 13.0), false);
         let trades = book.resolve(false);
 
         assert!(book.bids.is_empty());

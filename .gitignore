@@ -1,1 +1,11 @@
+# Build Artifacts
 /target
+
+# Data & Images
+**/*.svg
+**/*.png
+**/*.parquet
+**/*.csv
+
+# Debug & Tests
+/debug
