@@ -1,10 +1,10 @@
-mod market;
 mod math;
 mod order_book;
 mod plot;
+mod simulation;
 
 use clap::Parser;
-use market::{Market, MarketConfig};
+use simulation::{Simulation, SimulationConfig};
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -15,7 +15,7 @@ struct Cli {
     #[arg(
         short = 's',
         long = "seed",
-        help = "Only meaningful with --n-runs 1; with more runs every run would reuse the same seed and produce identical results"
+        help = "Base RNG seed; with --n-runs > 1, run N uses seed + N so each run is distinct but reproducible"
     )]
     seed: Option<u32>,
 
@@ -80,8 +80,7 @@ struct Cli {
 async fn main() {
     let cli = Cli::parse();
 
-    let cfg = Arc::new(MarketConfig {
-        seed: cli.seed,
+    let cfg = Arc::new(SimulationConfig {
         n_traders: cli.n_traders,
         trade_prob: cli.trade_prob,
         initial_open: cli.open,
@@ -112,7 +111,8 @@ async fn main() {
     for num in 0..cli.n_runs {
         let run_cfg = RunConfig {
             num,
-            market_cfg: Arc::clone(&cfg),
+            seed: cli.seed.map(|s| s.wrapping_add(num as u32)),
+            simulation_cfg: Arc::clone(&cfg),
             out: cli.out.join(format!("run{num}.parquet")),
             chart_out: cli
                 .chart_out
@@ -129,16 +129,17 @@ async fn main() {
 
 struct RunConfig {
     num: usize,
-    market_cfg: Arc<MarketConfig>,
+    seed: Option<u32>,
+    simulation_cfg: Arc<SimulationConfig>,
     out: PathBuf,
     chart_out: Option<PathBuf>,
 }
 
 async fn run_simulation(cfg: RunConfig) {
-    let m_cfg = &cfg.market_cfg;
-    let mut market = Market::with_config(**m_cfg);
+    let m_cfg = cfg.simulation_cfg;
+    let mut simulation = Simulation::with_config(m_cfg, cfg.seed);
     let sim_start = Instant::now();
-    if let Err(e) = market.run() {
+    if let Err(e) = simulation.run() {
         eprintln!("run {} simulation failed: {e}", cfg.num);
         std::process::exit(1);
     }
@@ -148,16 +149,17 @@ async fn run_simulation(cfg: RunConfig) {
         sim_start.elapsed()
     );
 
-    let market = Arc::new(market);
+    let simulation = Arc::new(simulation);
     let save_start = Instant::now();
 
-    let write_market = Arc::clone(&market);
+    let write_simulation = Arc::clone(&simulation);
     let out_path = cfg.out.clone();
-    let write_handle = tokio::task::spawn_blocking(move || write_output(&write_market, &out_path));
+    let write_handle =
+        tokio::task::spawn_blocking(move || write_output(&write_simulation, &out_path));
 
     let chart_handle = cfg.chart_out.clone().map(|chart_path| {
-        let chart_market = Arc::clone(&market);
-        tokio::task::spawn_blocking(move || write_chart(&chart_market, &chart_path))
+        let chart_simulation = Arc::clone(&simulation);
+        tokio::task::spawn_blocking(move || write_chart(&chart_simulation, &chart_path))
     });
 
     if let Err(e) = write_handle.await.expect("data-saving task panicked") {
@@ -179,13 +181,15 @@ async fn run_simulation(cfg: RunConfig) {
     );
 }
 
-fn write_output(market: &Market, out: &PathBuf) -> Result<(), String> {
+fn write_output(simulation: &Simulation, out: &PathBuf) -> Result<(), String> {
     let extension = out.extension().and_then(|e| e.to_str());
     let file = || File::create(out).map_err(|e| e.to_string());
 
     match extension {
-        Some("csv") => market.history_to_csv(file()?).map_err(|e| e.to_string()),
-        Some("parquet") => market
+        Some("csv") => simulation
+            .history_to_csv(file()?)
+            .map_err(|e| e.to_string()),
+        Some("parquet") => simulation
             .history_to_parquet(file()?)
             .map_err(|e| e.to_string()),
         Some(other) => Err(format!("unsupported output file extension: .{other}")),
@@ -193,8 +197,8 @@ fn write_output(market: &Market, out: &PathBuf) -> Result<(), String> {
     }
 }
 
-fn write_chart(market: &Market, out: &Path) -> Result<(), String> {
-    let df = market.history_to_df().map_err(|e| e.to_string())?;
+fn write_chart(simulation: &Simulation, out: &Path) -> Result<(), String> {
+    let df = simulation.history_to_df().map_err(|e| e.to_string())?;
     let path = out
         .to_str()
         .ok_or_else(|| "chart output path is not valid UTF-8".to_string())?;

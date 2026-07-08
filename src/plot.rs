@@ -38,7 +38,7 @@ pub fn plot_candles(df: &DataFrame, out_path: &str) -> Result<(), Box<dyn std::e
 
     let mut chart = ChartBuilder::on(&root)
         .caption(
-            "Market Simulation Candlestick Chart",
+            "Simulation Simulation Candlestick Chart",
             ("sans-serif", 30 * scale),
         )
         .margin(20 * scale)
