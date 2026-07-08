@@ -2,29 +2,29 @@ use crate::order_book::EmptyDataError;
 use crate::order_book::{CandleData, Order, OrderBook};
 use polars::error::PolarsError;
 use polars::prelude::{CsvWriter, DataFrame, ParquetWriter, SerWriter, df};
-use rand::rngs::StdRng;
 use rand::SeedableRng;
+use rand::rngs::StdRng;
 use rand_distr::uniform::Error as UniformError;
 use rand_distr::{Binomial, BinomialError, Distribution, Normal, NormalError, Uniform};
 use std::io::Write;
 
 #[derive(Clone)]
-pub struct Market {
-    config: MarketConfig,
+pub struct Simulation {
+    config: SimulationConfig,
     order_book: OrderBook,
     history: Vec<CandleData>,
 }
 
-impl Market {
-    pub fn with_config(cfg: MarketConfig) -> Market {
-        Market {
+impl Simulation {
+    pub fn with_config(cfg: SimulationConfig) -> Simulation {
+        Simulation {
             config: cfg,
             order_book: OrderBook::default(),
             history: Vec::with_capacity(256),
         }
     }
 
-    pub fn run(&mut self) -> Result<(), MarketError> {
+    pub fn run(&mut self) -> Result<(), SimulationError> {
         let cfg = &self.config;
         let book = &mut self.order_book;
         let seed = cfg.seed.map(u64::from).unwrap_or_else(rand::random);
@@ -121,7 +121,7 @@ impl Market {
 }
 
 #[derive(Clone, Copy)]
-pub struct MarketConfig {
+pub struct SimulationConfig {
     pub seed: Option<u32>,
     pub n_traders: usize,
     pub trade_prob: f32,
@@ -138,8 +138,8 @@ pub struct MarketConfig {
     pub spike_ratio: f32,
 }
 
-impl MarketConfig {
-    fn init_distributions(&self) -> Result<Distributions, MarketError> {
+impl SimulationConfig {
+    fn init_distributions(&self) -> Result<Distributions, SimulationError> {
         let price_factor: Normal<f32> = Normal::new(self.skew, self.order_price_std)?;
         let orders = Binomial::new(self.n_traders as u64, self.trade_prob as f64)?;
         let quantity = Uniform::new_inclusive(self.min_quantity, self.max_quantity)?;
@@ -177,46 +177,46 @@ struct Distributions {
 }
 
 #[derive(Debug)]
-pub enum MarketError {
+pub enum SimulationError {
     EmptyData(EmptyDataError),
     InvalidDistribution(NormalError),
     InvalidBinomial(BinomialError),
     InvalidUniform(UniformError),
 }
 
-impl std::fmt::Display for MarketError {
+impl std::fmt::Display for SimulationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            MarketError::EmptyData(e) => write!(f, "empty data: {e}"),
-            MarketError::InvalidDistribution(e) => write!(f, "invalid distribution: {e}"),
-            MarketError::InvalidBinomial(e) => write!(f, "invalid binomial: {e}"),
-            MarketError::InvalidUniform(e) => write!(f, "invalid uniform: {e}"),
+            SimulationError::EmptyData(e) => write!(f, "empty data: {e}"),
+            SimulationError::InvalidDistribution(e) => write!(f, "invalid distribution: {e}"),
+            SimulationError::InvalidBinomial(e) => write!(f, "invalid binomial: {e}"),
+            SimulationError::InvalidUniform(e) => write!(f, "invalid uniform: {e}"),
         }
     }
 }
 
-impl std::error::Error for MarketError {}
+impl std::error::Error for SimulationError {}
 
-impl From<EmptyDataError> for MarketError {
+impl From<EmptyDataError> for SimulationError {
     fn from(e: EmptyDataError) -> Self {
-        MarketError::EmptyData(e)
+        SimulationError::EmptyData(e)
     }
 }
 
-impl From<NormalError> for MarketError {
+impl From<NormalError> for SimulationError {
     fn from(e: NormalError) -> Self {
-        MarketError::InvalidDistribution(e)
+        SimulationError::InvalidDistribution(e)
     }
 }
 
-impl From<BinomialError> for MarketError {
+impl From<BinomialError> for SimulationError {
     fn from(e: BinomialError) -> Self {
-        MarketError::InvalidBinomial(e)
+        SimulationError::InvalidBinomial(e)
     }
 }
 
-impl From<UniformError> for MarketError {
+impl From<UniformError> for SimulationError {
     fn from(e: UniformError) -> Self {
-        MarketError::InvalidUniform(e)
+        SimulationError::InvalidUniform(e)
     }
 }
