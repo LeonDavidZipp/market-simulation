@@ -12,14 +12,17 @@ use std::time::Instant;
 
 #[derive(Parser)]
 struct Cli {
-    #[arg(short = 'n', long = "n-steps", default_value_t = 100)]
-    n_steps: usize,
-
     #[arg(short = 'o', long = "out")]
     out: PathBuf,
 
     #[arg(long = "chart-out", visible_alias = "co")]
     chart_out: Option<PathBuf>,
+
+    #[arg(short = 'n', long = "n-steps", default_value_t = 100)]
+    n_steps: usize,
+
+    #[arg(long = "n-runs", visible_alias = "nr", default_value_t = 1)]
+    n_runs: usize,
 
     #[arg(long = "n-traders", visible_alias = "nt", default_value_t = 1000)]
     n_traders: usize,
@@ -70,7 +73,7 @@ struct Cli {
 async fn main() {
     let cli = Cli::parse();
 
-    let cfg = MarketConfig {
+    let cfg = Arc::new(MarketConfig {
         n_traders: cli.n_traders,
         trade_prob: cli.trade_prob,
         initial_open: cli.open,
@@ -84,42 +87,88 @@ async fn main() {
         shock_intensity: cli.shock_intensity,
         shock_intensity_std: cli.shock_intensity_std,
         spike_ratio: cli.spike_ratio,
-    };
+    });
 
-    let mut market = Market::with_config(cfg);
-
-    let sim_start = Instant::now();
-    if let Err(e) = market.run() {
-        eprintln!("simulation failed: {e}");
+    if let Err(e) = std::fs::create_dir_all(&cli.out) {
+        eprintln!("failed to create output directory: {e}");
         std::process::exit(1);
     }
-    println!("simulation took {:.3?}", sim_start.elapsed());
+    if let Some(chart_dir) = &cli.chart_out
+        && let Err(e) = std::fs::create_dir_all(chart_dir)
+    {
+        eprintln!("failed to create chart output directory: {e}");
+        std::process::exit(1);
+    }
+
+    let mut handles = Vec::with_capacity(cli.n_runs);
+    for num in 0..cli.n_runs {
+        let run_cfg = RunConfig {
+            num,
+            market_cfg: Arc::clone(&cfg),
+            out: cli.out.join(format!("run{num}.parquet")),
+            chart_out: cli
+                .chart_out
+                .as_ref()
+                .map(|dir| dir.join(format!("run{num}.svg"))),
+        };
+        handles.push(tokio::spawn(run_simulation(run_cfg)));
+    }
+
+    for handle in handles {
+        handle.await.expect("run task panicked");
+    }
+}
+
+struct RunConfig {
+    num: usize,
+    market_cfg: Arc<MarketConfig>,
+    out: PathBuf,
+    chart_out: Option<PathBuf>,
+}
+
+async fn run_simulation(cfg: RunConfig) {
+    let m_cfg = &cfg.market_cfg;
+    let mut market = Market::with_config(**m_cfg);
+    let sim_start = Instant::now();
+    if let Err(e) = market.run() {
+        eprintln!("run {} simulation failed: {e}", cfg.num);
+        std::process::exit(1);
+    }
+    println!(
+        "run {} simulation took {:.3?}",
+        cfg.num,
+        sim_start.elapsed()
+    );
 
     let market = Arc::new(market);
     let save_start = Instant::now();
 
     let write_market = Arc::clone(&market);
-    let out_path = cli.out.clone();
+    let out_path = cfg.out.clone();
     let write_handle = tokio::task::spawn_blocking(move || write_output(&write_market, &out_path));
 
-    let chart_handle = cli.chart_out.clone().map(|chart_path| {
+    let chart_handle = cfg.chart_out.clone().map(|chart_path| {
         let chart_market = Arc::clone(&market);
         tokio::task::spawn_blocking(move || write_chart(&chart_market, &chart_path))
     });
 
     if let Err(e) = write_handle.await.expect("data-saving task panicked") {
-        eprintln!("error saving data: {e}");
+        eprintln!("run {} error saving data: {e}", cfg.num);
         std::process::exit(1);
     }
 
     if let Some(handle) = chart_handle
         && let Err(e) = handle.await.expect("chart-saving task panicked")
     {
-        eprintln!("error saving chart: {e}");
+        eprintln!("run {} error saving chart: {e}", cfg.num);
         std::process::exit(1);
     }
 
-    println!("output saving took {:.3?}", save_start.elapsed());
+    println!(
+        " run {} output saving took {:.3?}",
+        cfg.num,
+        save_start.elapsed()
+    );
 }
 
 fn write_output(market: &Market, out: &PathBuf) -> Result<(), String> {
