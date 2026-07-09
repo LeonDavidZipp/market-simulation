@@ -57,7 +57,7 @@ async fn main() {
     for num in 0..manifest.n_runs {
         let run_cfg = RunConfig {
             num,
-            seed: cli.seed.map(|s| s.wrapping_add(num as u32)),
+            seed: manifest.seed.map(|s| s.wrapping_add(num as u32)),
             simulation_cfg: Arc::clone(&cfg),
             out: data_dir.join(format!("run{num}.parquet")),
             chart_out: cli
