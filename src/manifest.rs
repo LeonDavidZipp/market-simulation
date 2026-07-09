@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use crate::simulation::SimulationConfig;
 use serde::{Deserialize, Serialize};
@@ -7,7 +8,7 @@ use serde::{Deserialize, Serialize};
 pub struct Manifest {
     pub seed: Option<u32>,
     pub n_runs: usize,
-    pub config: SimulationConfig,
+    pub config: Arc<SimulationConfig>,
 }
 
 pub fn manifest_from_path(path: &PathBuf) -> Result<Manifest, ManifestError> {
