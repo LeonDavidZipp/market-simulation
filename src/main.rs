@@ -8,7 +8,7 @@ mod simulation;
 
 use clap::Parser;
 use cli::Cli;
-use manifest::Manifest;
+use manifest::{Manifest, manifest_from_path};
 use run::{RunConfig, run_simulation};
 use simulation::SimulationConfig;
 use std::sync::Arc;
@@ -21,21 +21,32 @@ async fn main() {
         std::process::exit(1);
     }
 
-    let cfg = Arc::new(SimulationConfig {
-        n_traders: cli.n_traders,
-        trade_prob: cli.trade_prob,
-        initial_open: cli.open,
-        order_price_std: cli.order_price_std,
-        skew: cli.skew,
-        n_steps: cli.n_steps,
-        n_ticks_per_candle: cli.n_ticks_per_candle,
-        min_quantity: cli.min_quantity,
-        max_quantity: cli.max_quantity,
-        shock_prob: cli.shock_prob,
-        shock_intensity: cli.shock_intensity,
-        shock_intensity_std: cli.shock_intensity_std,
-        spike_ratio: cli.spike_ratio,
-    });
+    let cfg = if let Some(path) = &cli.manifest_path {
+        let manifest = match manifest_from_path(path) {
+            Ok(m) => m,
+            Err(e) => {
+                eprintln!("{e}");
+                std::process::exit(1);
+            }
+        };
+        Arc::new(manifest.config)
+    } else {
+        Arc::new(SimulationConfig {
+            n_traders: cli.n_traders,
+            trade_prob: cli.trade_prob,
+            initial_open: cli.open,
+            order_price_std: cli.order_price_std,
+            skew: cli.skew,
+            n_steps: cli.n_steps,
+            n_ticks_per_candle: cli.n_ticks_per_candle,
+            min_quantity: cli.min_quantity,
+            max_quantity: cli.max_quantity,
+            shock_prob: cli.shock_prob,
+            shock_intensity: cli.shock_intensity,
+            shock_intensity_std: cli.shock_intensity_std,
+            spike_ratio: cli.spike_ratio,
+        })
+    };
 
     let data_dir = cli.out.join("data");
     if let Err(e) = std::fs::create_dir_all(&data_dir) {
