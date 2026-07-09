@@ -37,6 +37,13 @@ async fn main() {
     run_multiple_simulations(&manifest, &data_dir, chart_dir).await;
 }
 
+/// Builds the run [`Manifest`], either by loading it from [`Cli::manifest_path`]
+/// if given, or by constructing it from the individual CLI arguments.
+///
+/// # Errors
+///
+/// Returns [`ManifestError`] if a manifest path is given but the file can't
+/// be read or parsed.
 fn load_manifest(cli: &Cli) -> Result<Manifest, ManifestError> {
     if let Some(path) = &cli.manifest_path {
         Manifest::from_file(path)
@@ -102,6 +109,14 @@ fn create_fs_artifacts(
     Ok((data_dir, chart_dir))
 }
 
+/// Spawns [`manifest.n_runs`](Manifest::n_runs) simulation runs concurrently,
+/// each writing its parquet output under `data_dir` and, if `chart_dir` is
+/// set, its chart under `chart_dir`. Waits for every run to finish before
+/// returning.
+///
+/// # Panics
+///
+/// Panics if any spawned run task itself panics.
 async fn run_multiple_simulations(
     manifest: &Manifest,
     data_dir: &Path,
