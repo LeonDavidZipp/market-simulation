@@ -8,7 +8,7 @@ mod simulation;
 
 use clap::Parser;
 use cli::Cli;
-use manifest::{Manifest, manifest_from_path};
+use manifest::Manifest;
 use run::{RunConfig, run_simulation};
 use simulation::SimulationConfig;
 use std::sync::Arc;
@@ -22,7 +22,7 @@ async fn main() {
     }
 
     let manifest = if let Some(path) = &cli.manifest_path {
-        match manifest_from_path(path) {
+        match Manifest::from_file(path) {
             Ok(m) => m,
             Err(e) => {
                 eprintln!("{e}");

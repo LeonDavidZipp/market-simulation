@@ -11,10 +11,12 @@ pub struct Manifest {
     pub config: Arc<SimulationConfig>,
 }
 
-pub fn manifest_from_path(path: &PathBuf) -> Result<Manifest, ManifestError> {
-    let file = std::fs::File::open(path)?;
-    let manifest: Manifest = serde_json::from_reader(file)?;
-    Ok(manifest)
+impl Manifest {
+    pub fn from_file(path: &PathBuf) -> Result<Manifest, ManifestError> {
+        let file = std::fs::File::open(path)?;
+        let manifest: Manifest = serde_json::from_reader(file)?;
+        Ok(manifest)
+    }
 }
 
 #[derive(Debug)]
