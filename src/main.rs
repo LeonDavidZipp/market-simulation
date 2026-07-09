@@ -9,9 +9,8 @@ mod simulation;
 use clap::Parser;
 use cli::Cli;
 use manifest::{Manifest, load_manifest};
-use run::{RunConfig, run_simulation};
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use run::run_multiple_simulations;
+use std::path::PathBuf;
 
 #[tokio::main]
 async fn main() {
@@ -71,39 +70,6 @@ fn create_fs_artifacts(
     }
 
     Ok((data_dir, chart_dir))
-}
-
-/// Spawns [`manifest.n_runs`](Manifest::n_runs) simulation runs concurrently,
-/// each writing its parquet output under `data_dir` and, if `chart_dir` is
-/// set, its chart under `chart_dir`. Waits for every run to finish before
-/// returning.
-///
-/// # Panics
-///
-/// Panics if any spawned run task itself panics.
-async fn run_multiple_simulations(
-    manifest: &Manifest,
-    data_dir: &Path,
-    chart_dir: Option<PathBuf>,
-) {
-    let cfg = Arc::clone(&manifest.config);
-    let mut handles = Vec::with_capacity(manifest.n_runs);
-    for num in 0..manifest.n_runs {
-        let run_cfg = RunConfig {
-            num,
-            seed: manifest.seed.map(|s| s.wrapping_add(num as u32)),
-            simulation_cfg: Arc::clone(&cfg),
-            out: data_dir.join(format!("run_{num}.parquet")),
-            chart_out: chart_dir
-                .as_ref()
-                .map(|c_dir| c_dir.join(format!("run_{num}.svg"))),
-        };
-        handles.push(tokio::spawn(run_simulation(run_cfg)));
-    }
-
-    for handle in handles {
-        handle.await.expect("run task panicked");
-    }
 }
 
 #[derive(Debug)]
