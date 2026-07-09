@@ -11,7 +11,7 @@ use cli::Cli;
 use manifest::Manifest;
 use run::{RunConfig, run_simulation};
 use simulation::SimulationConfig;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crate::manifest::ManifestError;
@@ -29,30 +29,12 @@ async fn main() {
         std::process::exit(1);
     });
 
-    let cfg = Arc::clone(&manifest.config);
-
     let (data_dir, chart_dir) = create_fs_artifacts(&cli, &manifest).unwrap_or_else(|e| {
         eprintln!("{e}");
         std::process::exit(1);
     });
 
-    let mut handles = Vec::with_capacity(manifest.n_runs);
-    for num in 0..manifest.n_runs {
-        let run_cfg = RunConfig {
-            num,
-            seed: manifest.seed.map(|s| s.wrapping_add(num as u32)),
-            simulation_cfg: Arc::clone(&cfg),
-            out: data_dir.join(format!("run{num}.parquet")),
-            chart_out: chart_dir
-                .as_ref()
-                .map(|c_dir| c_dir.join(format!("run{num}.svg"))),
-        };
-        handles.push(tokio::spawn(run_simulation(run_cfg)));
-    }
-
-    for handle in handles {
-        handle.await.expect("run task panicked");
-    }
+    run_multiple_simulations(&manifest, &data_dir, chart_dir).await;
 }
 
 fn load_manifest(cli: &Cli) -> Result<Manifest, ManifestError> {
@@ -81,17 +63,25 @@ fn load_manifest(cli: &Cli) -> Result<Manifest, ManifestError> {
     }
 }
 
-/// Creates the `data`/`charts` output directories and, if enabled, writes
-/// `manifest.json`. Returns the `data`/`charts` directory paths.
+/// Creates the `data` output directory, and the `charts` output directory if
+/// [`Cli::with_charts`] is set. If [`Cli::with_manifest`] is set, writes
+/// `manifest.json`. If [`Cli::allow_overwrite`] is set and [`Cli::out`]
+/// already exists, it is removed first so it can be recreated from scratch.
+/// Returns the `data` directory path, and the `charts` directory path if it
+/// was created.
 ///
 /// # Errors
 ///
-/// Returns [`FsArtifactsError`] if a directory can't be created, the
-/// manifest can't be serialized, or `manifest.json` can't be written.
+/// Returns [`FsArtifactsError`] if the existing output directory can't be
+/// removed, a directory can't be created, the manifest can't be serialized,
+/// or `manifest.json` can't be written.
 fn create_fs_artifacts(
     cli: &Cli,
     manifest: &Manifest,
 ) -> Result<(PathBuf, Option<PathBuf>), FsArtifactsError> {
+    if cli.allow_overwrite && cli.out.try_exists()? {
+        std::fs::remove_dir_all(&cli.out)?;
+    }
     let data_dir = cli.out.join("data");
     std::fs::create_dir_all(&data_dir)?;
 
@@ -110,6 +100,31 @@ fn create_fs_artifacts(
     }
 
     Ok((data_dir, chart_dir))
+}
+
+async fn run_multiple_simulations(
+    manifest: &Manifest,
+    data_dir: &Path,
+    chart_dir: Option<PathBuf>,
+) {
+    let cfg = Arc::clone(&manifest.config);
+    let mut handles = Vec::with_capacity(manifest.n_runs);
+    for num in 0..manifest.n_runs {
+        let run_cfg = RunConfig {
+            num,
+            seed: manifest.seed.map(|s| s.wrapping_add(num as u32)),
+            simulation_cfg: Arc::clone(&cfg),
+            out: data_dir.join(format!("run_{num}.parquet")),
+            chart_out: chart_dir
+                .as_ref()
+                .map(|c_dir| c_dir.join(format!("run_{num}.svg"))),
+        };
+        handles.push(tokio::spawn(run_simulation(run_cfg)));
+    }
+
+    for handle in handles {
+        handle.await.expect("run task panicked");
+    }
 }
 
 #[derive(Debug)]
