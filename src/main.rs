@@ -75,8 +75,8 @@ async fn main() {
         }
     }
 
-    let mut handles = Vec::with_capacity(cli.n_runs);
-    for num in 0..cli.n_runs {
+    let mut handles = Vec::with_capacity(manifest.n_runs);
+    for num in 0..manifest.n_runs {
         let run_cfg = RunConfig {
             num,
             seed: cli.seed.map(|s| s.wrapping_add(num as u32)),
