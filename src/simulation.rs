@@ -19,6 +19,8 @@ pub struct Simulation {
 }
 
 impl Simulation {
+    /// Creates a new, empty [`Simulation`] sharing `cfg` and using `seed` (or
+    /// an OS-random seed if `None`) for its RNG.
     pub fn with_config(cfg: Arc<SimulationConfig>, seed: Option<u32>) -> Simulation {
         Simulation {
             seed,
@@ -28,6 +30,14 @@ impl Simulation {
         }
     }
 
+    /// Runs the simulation to completion, populating its candle history one
+    /// candle per `n_ticks_per_candle` ticks, with periodic random price
+    /// shocks applied between candles.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SimulationError`] if any of the configured probability
+    /// distributions are invalid (e.g. a negative standard deviation).
     pub fn run(&mut self) -> Result<(), SimulationError> {
         let cfg = &self.config;
         let book = &mut self.order_book;
@@ -76,6 +86,12 @@ impl Simulation {
         Ok(())
     }
 
+    /// Converts the simulation's candle history into a Polars [`DataFrame`],
+    /// one row per candle.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the `DataFrame` cannot be constructed.
     pub fn history_to_df(&self) -> Result<DataFrame, PolarsError> {
         let hist = &self.history;
         let l = hist.len();
@@ -111,12 +127,22 @@ impl Simulation {
         Ok(df)
     }
 
+    /// Writes the simulation's history to `writer` in Parquet format.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if conversion to a `DataFrame` or writing fails.
     pub fn history_to_parquet<W: Write>(&self, writer: W) -> Result<(), PolarsError> {
         let mut df = self.history_to_df()?;
         ParquetWriter::new(writer).finish(&mut df)?;
         Ok(())
     }
 
+    /// Writes the simulation's history to `writer` in CSV format.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if conversion to a `DataFrame` or writing fails.
     pub fn history_to_csv<W: Write>(&self, writer: W) -> Result<(), PolarsError> {
         let mut df = self.history_to_df()?;
         CsvWriter::new(writer).finish(&mut df)?;
@@ -142,6 +168,12 @@ pub struct SimulationConfig {
 }
 
 impl SimulationConfig {
+    /// Builds the probability distributions used to drive one simulation run.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SimulationError`] if any configured distribution parameter
+    /// is invalid.
     fn init_distributions(&self) -> Result<Distributions, SimulationError> {
         let price_factor: Normal<f32> = Normal::new(self.skew, self.order_price_std)?;
         let orders = Binomial::new(self.n_traders as u64, self.trade_prob as f64)?;
@@ -161,10 +193,14 @@ impl SimulationConfig {
         })
     }
 
+    /// Estimates the mean number of trades per tick, used to pre-size the
+    /// per-tick trade-price buffer.
     fn calc_mean_n_trades(&self) -> usize {
         (self.trade_prob * self.n_traders as f32) as usize
     }
 
+    /// Total number of ticks across the whole simulation
+    /// (`n_steps * n_ticks_per_candle`).
     fn calc_n_total_ticks(&self) -> usize {
         self.n_steps * self.n_ticks_per_candle
     }

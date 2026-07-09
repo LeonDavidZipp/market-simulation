@@ -1,6 +1,8 @@
 use plotters::prelude::*;
 use polars::prelude::*;
 
+/// Formats a price for a chart axis label: at most 2 decimal places, and
+/// abbreviated as e.g. `"1.23 Mio"` once the magnitude reaches one million.
 fn format_price(y: f32) -> String {
     if y.abs() >= 1_000_000.0 {
         return format!("{:.2} Mio", y / 1_000_000.0);
@@ -12,6 +14,14 @@ fn format_price(y: f32) -> String {
         .to_string()
 }
 
+/// Renders `df`'s `open`/`high`/`low`/`close`/`median` columns as a
+/// candlestick chart with a median overlay line, saved as an SVG file at
+/// `out_path`.
+///
+/// # Errors
+///
+/// Returns an error if `df` is missing the expected columns or has no rows,
+/// or if rendering or writing the SVG fails.
 pub fn plot_candles(df: &DataFrame, out_path: &str) -> Result<(), Box<dyn std::error::Error>> {
     let column = |name: &str| -> Result<Vec<f32>, Box<dyn std::error::Error>> {
         Ok(df.column(name)?.f32()?.into_no_null_iter().collect())

@@ -12,6 +12,12 @@ pub struct Manifest {
 }
 
 impl Manifest {
+    /// Reads and parses a [`Manifest`] from the JSON file at `path`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ManifestError::Io`] if the file cannot be opened, or
+    /// [`ManifestError::Json`] if its contents are not a valid `Manifest`.
     pub fn from_file(path: &PathBuf) -> Result<Manifest, ManifestError> {
         let file = std::fs::File::open(path)?;
         let manifest: Manifest = serde_json::from_reader(file)?;

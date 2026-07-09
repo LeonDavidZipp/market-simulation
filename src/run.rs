@@ -13,6 +13,13 @@ pub struct RunConfig {
     pub chart_out: Option<PathBuf>,
 }
 
+/// Runs a single simulation to completion, then concurrently writes its data
+/// output and, if configured, its candlestick chart.
+///
+/// The simulation itself and both write steps run via
+/// [`tokio::task::spawn_blocking`] so this CPU-bound work never blocks an
+/// async worker thread. On any failure this prints an error and exits the
+/// process.
 pub async fn run_simulation(cfg: RunConfig) {
     let m_cfg = cfg.simulation_cfg;
     let seed = cfg.seed;
@@ -70,6 +77,13 @@ pub async fn run_simulation(cfg: RunConfig) {
     );
 }
 
+/// Writes `simulation`'s history to `out`, inferring CSV or Parquet format
+/// from the file extension.
+///
+/// # Errors
+///
+/// Returns an error if `out` has no extension, an unsupported extension, or
+/// if writing the file fails.
 fn write_output(simulation: &Simulation, out: &PathBuf) -> Result<(), String> {
     let extension = out.extension().and_then(|e| e.to_str());
     let file = || File::create(out).map_err(|e| e.to_string());
@@ -86,6 +100,12 @@ fn write_output(simulation: &Simulation, out: &PathBuf) -> Result<(), String> {
     }
 }
 
+/// Renders `simulation`'s candlestick chart to `out` as an SVG file.
+///
+/// # Errors
+///
+/// Returns an error if the history can't be converted to a `DataFrame`, `out`
+/// isn't valid UTF-8, or rendering the chart fails.
 fn write_chart(simulation: &Simulation, out: &Path) -> Result<(), String> {
     let df = simulation.history_to_df().map_err(|e| e.to_string())?;
     let path = out

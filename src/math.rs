@@ -1,15 +1,21 @@
+/// Returns the median of `data`, or `None` if it's empty.
 pub fn calc_median(data: &[f32]) -> Option<f32> {
     calc_nth_percentile(data, 0.5)
 }
 
+/// Returns the 25th percentile of `data`, or `None` if it's empty.
 pub fn calc_25th_percentile(data: &[f32]) -> Option<f32> {
     calc_nth_percentile(data, 0.25)
 }
 
+/// Returns the 75th percentile of `data`, or `None` if it's empty.
 pub fn calc_75th_percentile(data: &[f32]) -> Option<f32> {
     calc_nth_percentile(data, 0.75)
 }
 
+/// Returns the `perc`-th percentile of `data` (e.g. `0.5` for the median),
+/// linearly interpolating between the two nearest ranks when `perc` doesn't
+/// land exactly on one. Returns `None` if `data` is empty.
 pub fn calc_nth_percentile(data: &[f32], perc: f32) -> Option<f32> {
     if data.is_empty() {
         return None;

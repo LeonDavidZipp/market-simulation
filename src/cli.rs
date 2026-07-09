@@ -77,6 +77,13 @@ pub struct Cli {
 }
 
 impl Cli {
+    /// Checks whether [`Cli::out`] already exists, refusing to proceed unless
+    /// [`Cli::allow_overwrite`] is set.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CliError::Io`] if the filesystem check itself fails, or
+    /// [`CliError::FileExists`] if the path exists and overwriting isn't allowed.
     pub fn check_out_exists(&self) -> Result<(), CliError> {
         let exists = Path::new(&self.out).try_exists()?;
         if exists && !self.allow_overwrite {
@@ -86,6 +93,7 @@ impl Cli {
     }
 }
 
+/// Returns the default `--out` directory: `<current working directory>/simulation`.
 fn default_out_dir() -> PathBuf {
     std::env::current_dir()
         .unwrap_or_else(|_| PathBuf::from("."))

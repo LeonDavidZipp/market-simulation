@@ -21,6 +21,8 @@ impl Default for OrderBook {
 }
 
 impl OrderBook {
+    /// Inserts `order` into the bid or ask side of the book, depending on
+    /// `is_bid`.
     pub fn insert_order(&mut self, order: Order, is_bid: bool) {
         let side = if is_bid {
             &mut self.bids
@@ -32,6 +34,11 @@ impl OrderBook {
             .push_back(order);
     }
 
+    /// Matches crossing bids and asks, filling orders until the best bid no
+    /// longer meets or exceeds the best ask.
+    ///
+    /// Returns the sequence of trade prices produced by this call, or `None`
+    /// if no trade occurred.
     pub fn resolve(&mut self, inserted_is_bid: bool) -> Option<Vec<f32>> {
         let bids = &mut self.bids;
         let asks = &mut self.asks;
@@ -96,6 +103,7 @@ pub struct Order {
 }
 
 impl Order {
+    /// Creates a new order for `quantity` units at `price`.
     pub fn new(price: f32, quantity: f32) -> Order {
         Order { price, quantity }
     }
@@ -120,6 +128,12 @@ pub struct CandleData {
 }
 
 impl CandleData {
+    /// Aggregates a slice of trade prices into a single [`CandleData`]
+    /// (min/max/mean/median/25th/75th percentile/open/close).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`EmptyDataError`] if `data` is empty.
     pub fn from_data(data: &[f32]) -> Result<CandleData, EmptyDataError> {
         if data.is_empty() {
             return Err(EmptyDataError);
