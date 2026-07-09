@@ -1,5 +1,5 @@
 use clap::Parser;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Parser)]
 pub struct Cli {
@@ -18,6 +18,9 @@ pub struct Cli {
 
     #[arg(long = "with-manifest", default_value_t = true)]
     pub with_manifest: bool,
+
+    #[arg(long = "allow-overwrite", default_value_t = false)]
+    pub allow_overwrite: bool,
 
     #[arg(short = 'n', long = "n-steps", default_value_t = 100)]
     pub n_steps: usize,
@@ -70,8 +73,45 @@ pub struct Cli {
     pub spike_ratio: f32,
 }
 
+impl Cli {
+    pub fn check_out_exists(&self) -> Result<(), CliError> {
+        let exists = Path::new(&self.out).try_exists()?;
+        if exists && !self.allow_overwrite {
+            return Err(CliError::FileExists(self.out.clone()));
+        }
+        Ok(())
+    }
+}
+
 fn default_out_dir() -> PathBuf {
     std::env::current_dir()
         .unwrap_or_else(|_| PathBuf::from("."))
         .join("simulation")
+}
+
+#[derive(Debug)]
+pub enum CliError {
+    Io(std::io::Error),
+    FileExists(PathBuf),
+}
+
+impl std::fmt::Display for CliError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CliError::Io(e) => write!(f, "io error: {e}"),
+            CliError::FileExists(path) => write!(
+                f,
+                "output path already exists: {} (pass --allow-overwrite to overwrite it)",
+                path.display()
+            ),
+        }
+    }
+}
+
+impl std::error::Error for CliError {}
+
+impl From<std::io::Error> for CliError {
+    fn from(e: std::io::Error) -> Self {
+        CliError::Io(e)
+    }
 }

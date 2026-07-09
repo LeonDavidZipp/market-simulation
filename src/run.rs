@@ -1,5 +1,5 @@
-use crate::simulation::{Simulation, SimulationConfig, SimulationError};
 use crate::plot;
+use crate::simulation::{Simulation, SimulationConfig, SimulationError};
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
