@@ -6,6 +6,7 @@ use rand::SeedableRng;
 use rand::rngs::StdRng;
 use rand_distr::uniform::Error as UniformError;
 use rand_distr::{Binomial, BinomialError, Distribution, Normal, NormalError, Uniform};
+use serde::{Deserialize, Serialize};
 use std::io::Write;
 use std::sync::Arc;
 
@@ -123,7 +124,7 @@ impl Simulation {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct SimulationConfig {
     pub n_traders: usize,
     pub trade_prob: f32,

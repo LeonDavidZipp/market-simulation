@@ -1,9 +1,11 @@
+mod manifest;
 mod math;
 mod order_book;
 mod plot;
 mod simulation;
 
 use clap::Parser;
+use manifest::Manifest;
 use simulation::{Simulation, SimulationConfig, SimulationError};
 use std::fs::File;
 use std::path::{Path, PathBuf};
@@ -104,6 +106,18 @@ async fn main() {
         && let Err(e) = std::fs::create_dir_all(chart_dir)
     {
         eprintln!("failed to create chart output directory: {e}");
+        std::process::exit(1);
+    }
+
+    let manifest = Manifest {
+        seed: cli.seed,
+        n_runs: cli.n_runs,
+        config: (*cfg).clone(),
+    };
+    let manifest_json =
+        serde_json::to_string_pretty(&manifest).expect("failed to serialize manifest");
+    if let Err(e) = std::fs::write(cli.out.join("manifest.json"), manifest_json) {
+        eprintln!("failed to write manifest: {e}");
         std::process::exit(1);
     }
 
