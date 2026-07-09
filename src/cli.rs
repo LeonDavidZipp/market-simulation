@@ -3,6 +3,9 @@ use std::path::{Path, PathBuf};
 
 #[derive(Parser)]
 pub struct Cli {
+    #[arg(long = "from-manifest")]
+    pub manifest_path: Option<PathBuf>,
+
     #[arg(
         short = 's',
         long = "seed",
