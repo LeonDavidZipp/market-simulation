@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use crate::simulation::SimulationConfig;
+use crate::{cli::Cli, simulation::SimulationConfig};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -22,6 +22,43 @@ impl Manifest {
         let file = std::fs::File::open(path)?;
         let manifest: Manifest = serde_json::from_reader(file)?;
         Ok(manifest)
+    }
+
+    pub fn from_cli(cli: &Cli) -> Manifest {
+        Manifest {
+            seed: cli.seed,
+            n_runs: cli.n_runs,
+            config: Arc::new(SimulationConfig {
+                n_traders: cli.n_traders,
+                trade_prob: cli.trade_prob,
+                initial_open: cli.open,
+                order_price_std: cli.order_price_std,
+                skew: cli.skew,
+                n_steps: cli.n_steps,
+                n_ticks_per_candle: cli.n_ticks_per_candle,
+                min_quantity: cli.min_quantity,
+                max_quantity: cli.max_quantity,
+                shock_prob: cli.shock_prob,
+                shock_intensity: cli.shock_intensity,
+                shock_intensity_std: cli.shock_intensity_std,
+                spike_ratio: cli.spike_ratio,
+            }),
+        }
+    }
+}
+
+/// Builds the run [`Manifest`], either by loading it from [`Cli::manifest_path`]
+/// if given, or by constructing it from the individual CLI arguments.
+///
+/// # Errors
+///
+/// Returns [`ManifestError`] if a manifest path is given but the file can't
+/// be read or parsed.
+pub fn load_manifest(cli: &Cli) -> Result<Manifest, ManifestError> {
+    if let Some(path) = &cli.manifest_path {
+        Manifest::from_file(path)
+    } else {
+        Ok(Manifest::from_cli(cli))
     }
 }
 
