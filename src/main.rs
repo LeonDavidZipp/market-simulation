@@ -16,6 +16,10 @@ use std::sync::Arc;
 #[tokio::main]
 async fn main() {
     let cli = Cli::parse();
+    if let Err(e) = cli.check_out_exists() {
+        eprintln!("{e}");
+        std::process::exit(1);
+    }
 
     let cfg = Arc::new(SimulationConfig {
         n_traders: cli.n_traders,
