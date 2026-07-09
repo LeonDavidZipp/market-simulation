@@ -1,9 +1,11 @@
+mod manifest;
 mod math;
 mod order_book;
 mod plot;
 mod simulation;
 
 use clap::Parser;
+use manifest::Manifest;
 use simulation::{Simulation, SimulationConfig, SimulationError};
 use std::fs::File;
 use std::path::{Path, PathBuf};
@@ -19,11 +21,14 @@ struct Cli {
     )]
     seed: Option<u32>,
 
-    #[arg(short = 'o', long = "out")]
+    #[arg(short = 'o', long = "out", default_value_os_t = default_out_dir())]
     out: PathBuf,
 
-    #[arg(long = "chart-out", visible_alias = "co")]
-    chart_out: Option<PathBuf>,
+    #[arg(long = "with-charts", default_value_t = false)]
+    with_charts: bool,
+
+    #[arg(long = "with-manifest", default_value_t = true)]
+    with_manifest: bool,
 
     #[arg(short = 'n', long = "n-steps", default_value_t = 100)]
     n_steps: usize,
@@ -96,15 +101,32 @@ async fn main() {
         spike_ratio: cli.spike_ratio,
     });
 
-    if let Err(e) = std::fs::create_dir_all(&cli.out) {
+    let data_dir = cli.out.join("data");
+    if let Err(e) = std::fs::create_dir_all(&data_dir) {
         eprintln!("failed to create output directory: {e}");
         std::process::exit(1);
     }
-    if let Some(chart_dir) = &cli.chart_out
-        && let Err(e) = std::fs::create_dir_all(chart_dir)
+
+    let chart_dir = cli.out.join("charts");
+    if cli.with_charts
+        && let Err(e) = std::fs::create_dir_all(&chart_dir)
     {
         eprintln!("failed to create chart output directory: {e}");
         std::process::exit(1);
+    }
+
+    if cli.with_manifest {
+        let manifest = Manifest {
+            seed: cli.seed,
+            n_runs: cli.n_runs,
+            config: (*cfg).clone(),
+        };
+        let manifest_json =
+            serde_json::to_string_pretty(&manifest).expect("failed to serialize manifest");
+        if let Err(e) = std::fs::write(cli.out.join("manifest.json"), manifest_json) {
+            eprintln!("failed to write manifest: {e}");
+            std::process::exit(1);
+        }
     }
 
     let mut handles = Vec::with_capacity(cli.n_runs);
@@ -113,11 +135,10 @@ async fn main() {
             num,
             seed: cli.seed.map(|s| s.wrapping_add(num as u32)),
             simulation_cfg: Arc::clone(&cfg),
-            out: cli.out.join(format!("run{num}.parquet")),
+            out: data_dir.join(format!("run{num}.parquet")),
             chart_out: cli
-                .chart_out
-                .as_ref()
-                .map(|dir| dir.join(format!("run{num}.svg"))),
+                .with_charts
+                .then(|| chart_dir.join(format!("run{num}.svg"))),
         };
         handles.push(tokio::spawn(run_simulation(run_cfg)));
     }
@@ -190,6 +211,12 @@ async fn run_simulation(cfg: RunConfig) {
         cfg.num,
         save_start.elapsed()
     );
+}
+
+fn default_out_dir() -> PathBuf {
+    std::env::current_dir()
+        .unwrap_or_else(|_| PathBuf::from("."))
+        .join("simulation")
 }
 
 fn write_output(simulation: &Simulation, out: &PathBuf) -> Result<(), String> {
