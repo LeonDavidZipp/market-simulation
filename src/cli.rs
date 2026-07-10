@@ -1,5 +1,5 @@
 use clap::Parser;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 #[derive(Parser)]
 pub struct Cli {
@@ -85,7 +85,7 @@ impl Cli {
     /// Returns [`CliError::Io`] if the filesystem check itself fails, or
     /// [`CliError::FileExists`] if the path exists and overwriting isn't allowed.
     pub fn check_out_exists(&self) -> Result<(), CliError> {
-        let exists = Path::new(&self.out).try_exists()?;
+        let exists = self.out.try_exists()?;
         if exists && !self.allow_overwrite {
             return Err(CliError::FileExists(self.out.clone()));
         }
