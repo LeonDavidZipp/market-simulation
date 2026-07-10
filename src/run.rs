@@ -20,11 +20,11 @@ pub async fn run_multiple_simulations(
     chart_dir: Option<PathBuf>,
 ) {
     let cfg = Arc::clone(&manifest.config);
-    let mut handles = Vec::with_capacity(manifest.n_runs);
+    let mut handles = Vec::with_capacity(manifest.n_runs as usize);
     for num in 0..manifest.n_runs {
         let run_cfg = RunConfig {
             num,
-            seed: manifest.seed.map(|s| s.wrapping_add(num as u32)),
+            seed: manifest.seed.map(|s| s.wrapping_add(num)),
             simulation_cfg: Arc::clone(&cfg),
             out: data_dir.join(format!("run_{num}.parquet")),
             chart_out: chart_dir
@@ -40,7 +40,7 @@ pub async fn run_multiple_simulations(
 }
 
 pub struct RunConfig {
-    pub num: usize,
+    pub num: u32,
     pub seed: Option<u32>,
     pub simulation_cfg: Arc<SimulationConfig>,
     pub out: PathBuf,

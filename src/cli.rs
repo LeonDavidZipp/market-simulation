@@ -26,19 +26,19 @@ pub struct Cli {
     pub allow_overwrite: bool,
 
     #[arg(short = 'n', long = "n-steps", default_value_t = 100)]
-    pub n_steps: usize,
+    pub n_steps: u32,
 
     #[arg(long = "n-runs", visible_alias = "nr", default_value_t = 1)]
-    pub n_runs: usize,
+    pub n_runs: u32,
 
     #[arg(long = "n-traders", visible_alias = "nt", default_value_t = 1000)]
-    pub n_traders: usize,
+    pub n_traders: u32,
 
     #[arg(long = "trade-prob", visible_alias = "tp", default_value_t = 0.0005)]
     pub trade_prob: f32,
 
     #[arg(long = "ticks-per-candle", visible_alias = "tpc", default_value_t = 10)]
-    pub n_ticks_per_candle: usize,
+    pub n_ticks_per_candle: u32,
 
     #[arg(long = "open", visible_alias = "op", default_value_t = 100.0)]
     pub open: f32,

@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize)]
 pub struct Manifest {
     pub seed: Option<u32>,
-    pub n_runs: usize,
+    pub n_runs: u32,
     pub config: Arc<SimulationConfig>,
 }
 

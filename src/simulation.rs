@@ -46,7 +46,8 @@ impl Simulation {
         let dist = cfg.init_distributions()?;
         let n_ticks_total = cfg.calc_n_total_ticks();
         let mut tick = 1;
-        let mut trade_prices: Vec<f32> = Vec::with_capacity(cfg.calc_mean_n_trades());
+        let mut trade_prices: Vec<f32> =
+            Vec::with_capacity(cfg.calc_mean_n_trades().floor() as usize);
         book.last_traded_price = cfg.initial_open;
         for _ in 0..n_ticks_total {
             let n_orders: u64 = dist.orders.sample(&mut rng);
@@ -152,13 +153,13 @@ impl Simulation {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SimulationConfig {
-    pub n_traders: usize,
+    pub n_traders: u32,
     pub trade_prob: f32,
     pub initial_open: f32,
     pub order_price_std: f32,
     pub skew: f32,
-    pub n_steps: usize,
-    pub n_ticks_per_candle: usize,
+    pub n_steps: u32,
+    pub n_ticks_per_candle: u32,
     pub min_quantity: f32,
     pub max_quantity: f32,
     pub shock_prob: f32,
@@ -195,13 +196,13 @@ impl SimulationConfig {
 
     /// Estimates the mean number of trades per tick, used to pre-size the
     /// per-tick trade-price buffer.
-    fn calc_mean_n_trades(&self) -> usize {
-        (self.trade_prob * self.n_traders as f32) as usize
+    fn calc_mean_n_trades(&self) -> f32 {
+        self.trade_prob * self.n_traders as f32
     }
 
     /// Total number of ticks across the whole simulation
     /// (`n_steps * n_ticks_per_candle`).
-    fn calc_n_total_ticks(&self) -> usize {
+    fn calc_n_total_ticks(&self) -> u32 {
         self.n_steps * self.n_ticks_per_candle
     }
 }
