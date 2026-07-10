@@ -1691,7 +1691,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ms"
+name = "msim"
 version = "0.1.0"
 dependencies = [
  "clap",

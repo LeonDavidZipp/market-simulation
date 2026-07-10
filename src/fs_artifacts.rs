@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 /// Creates the `data` output directory, and the `charts` output directory if
 /// [`Cli::with_charts`] is set. If [`Cli::with_manifest`] is set, writes
-/// `manifest.json`. If [`Cli::allow_overwrite`] is set and [`Cli::out`]
+/// `msim.manifest.json`. If [`Cli::allow_overwrite`] is set and [`Cli::out`]
 /// already exists, it is removed first so it can be recreated from scratch.
 /// Returns the `data` directory path, and the `charts` directory path if it
 /// was created.
@@ -13,7 +13,7 @@ use std::path::PathBuf;
 ///
 /// Returns [`FsArtifactsError`] if the existing output directory can't be
 /// removed, a directory can't be created, the manifest can't be serialized,
-/// or `manifest.json` can't be written.
+/// or `msim.manifest.json` can't be written.
 pub fn create_fs_artifacts(
     cli: &Cli,
     manifest: &Manifest,
@@ -35,7 +35,7 @@ pub fn create_fs_artifacts(
 
     if cli.with_manifest {
         let manifest_json = serde_json::to_string_pretty(manifest)?;
-        std::fs::write(cli.out.join("manifest.json"), manifest_json)?;
+        std::fs::write(cli.out.join("msim.manifest.json"), manifest_json)?;
     }
 
     Ok((data_dir, chart_dir))
