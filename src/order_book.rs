@@ -140,9 +140,12 @@ impl CandleData {
         }
         let mut d_copy = data.to_vec();
         d_copy.sort_unstable_by(f32::total_cmp);
-        let max = data.iter().copied().fold(f32::MIN, f32::max);
-        let min = data.iter().copied().fold(f32::MAX, f32::min);
-        let sum: f32 = data.iter().copied().sum();
+        let (min, max, sum) = data
+            .iter()
+            .copied()
+            .fold((f32::MAX, f32::MIN, 0.0), |(min, max, sum), x| {
+                (min.min(x), max.max(x), sum + x)
+            });
         let mean = sum / data.len() as f32;
         let median = calc_median(&d_copy).ok_or(EmptyDataError)?;
         let perc_25 = calc_25th_percentile(&d_copy).ok_or(EmptyDataError)?;
